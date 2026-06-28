@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
-import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
-import { storage } from '../lib/firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { X, FileText, FileBadge, Trash2, Share2, Download, ExternalLink } from 'lucide-react';
 
 interface DownloadsModalProps {
   isOpen: boolean;
@@ -11,7 +9,6 @@ interface DownloadsModalProps {
 
 export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps) {
   const { files, deleteFile, markAsRead } = useDownloads();
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -23,48 +20,19 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      setDownloadingId(file.id);
-      // For WebViews (like AppCreator24), the safest way is a standard GET URL.
-      // We upload to Firebase Storage to get a public URL that Android DownloadManager can use.
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64data = reader.result as string;
-          
-          // 1. Upload to Firebase Storage
-          const fileRef = ref(storage, `temp_downloads/${Date.now()}_${file.name}`);
-          await uploadString(fileRef, base64data, 'data_url');
-          
-          // 2. Get the public download URL
-          const url = await getDownloadURL(fileRef);
-          
-          // 3. Trigger download via window.location (safest for Android DownloadManager)
-          window.location.href = url;
-          
-          setDownloadingId(null);
-        } catch (err) {
-          console.error("Firebase Storage upload failed:", err);
-          
-          // Fallback to standard base64 download if Storage fails (might crash in AppCreator24 but works in browsers)
-          try {
-            alert("لم نتمكن من استخدام خوادم التخزين السحابي. سنحاول التحميل بالطريقة التقليدية.\nملاحظة: إذا كنت تستخدم تطبيق (AppCreator24)، فقد يغلق التطبيق. يرجى فتح الموقع في متصفح Chrome للتحميل بنجاح.");
-            const base64data = reader.result as string;
-            const a = document.createElement('a');
-            a.href = base64data;
-            a.download = file.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          } catch (fallbackErr) {
-            alert("حدث خطأ أثناء تحميل الملف.");
-          }
-          setDownloadingId(null);
-        }
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        const a = document.createElement('a');
+        a.href = base64data;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       };
       reader.readAsDataURL(file.blob);
     } catch (error) {
       console.error("Error opening or sharing file:", error);
-      setDownloadingId(null);
     }
   };
 
@@ -91,6 +59,21 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
           </button>
         </div>
         
+        <div className="p-4 bg-amber-500/10 border-b border-amber-500/20">
+          <p className="text-amber-200 text-sm mb-3">
+            ملاحظة: إذا كان زر التحميل لا يعمل أو يغلق التطبيق، يرجى فتح الموقع في متصفح الهاتف الخارجي (مثل Chrome) وسيتم التحميل بنجاح هناك.
+          </p>
+          <a 
+            href="https://pro-g-nirateur-ai.vercel.app/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg transition-colors"
+          >
+            <ExternalLink size={18} />
+            فتح في المتصفح الخارجي
+          </a>
+        </div>
+        
         <div className="p-4 flex-1 overflow-y-auto">
           {files.length === 0 ? (
             <div className="text-center text-amber-500/50 py-12 flex flex-col items-center">
@@ -111,15 +94,10 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
                   <div className="flex items-center gap-2 shrink-0">
                     <button 
                       onClick={() => handleOpenOrShare(file)}
-                      disabled={downloadingId === file.id}
-                      className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
+                      className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors flex items-center justify-center min-w-[36px]"
                       title="تنزيل / مشاركة"
                     >
-                      {downloadingId === file.id ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <Download size={18} />
-                      )}
+                      <Download size={18} />
                     </button>
                     <button 
                       onClick={() => deleteFile(file.id)}
@@ -138,3 +116,4 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
     </div>
   );
 }
+
