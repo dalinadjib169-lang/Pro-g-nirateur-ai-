@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DownloadsProvider } from './contexts/DownloadsContext';
 import GeneratorPage from './pages/GeneratorPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -96,9 +97,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <DownloadsProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </DownloadsProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

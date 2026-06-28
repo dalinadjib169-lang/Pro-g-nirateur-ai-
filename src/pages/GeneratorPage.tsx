@@ -3,6 +3,10 @@ import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useDownloads } from '../contexts/DownloadsContext';
+import DownloadsModal from '../components/DownloadsModal';
 
 // Simple unique ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -20,12 +24,11 @@ const ADHKAR_LIST = [
   "لا إله إلا أنت سبحانك إني كنت من الظالمين"
 ];
 
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-
 export default function GeneratorPage() {
   const { userData, signOut, refreshUserData } = useAuth();
   const navigate = useNavigate();
+  const { addFile, unreadCount } = useDownloads();
+  const [isDownloadsModalOpen, setIsDownloadsModalOpen] = useState(false);
 
   const [darkMode, setDarkMode] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -378,7 +381,22 @@ export default function GeneratorPage() {
     };
 
     try {
-      await html2pdf().from(element).set(opt).save();
+      const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
+      
+      let title = 'مستند';
+      if (generationType === 'memo') title = 'مذكرة درس';
+      else if (generationType === 'test') title = 'تقويم';
+      else if (generationType === 'series') title = 'سلسلة تمارين';
+      else if (generationType === 'summary') title = 'ملخص';
+      else if (generationType.startsWith('cutout')) title = 'قصاصات';
+      
+      const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.pdf`;
+      
+      await addFile(fileName, 'pdf', pdfBlob);
+      if (soundEnabled) soundManager.play('success');
+      setIsDownloadsModalOpen(true);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
     } finally {
       // Restore original styles
       element.style.transform = originalTransform;
@@ -409,19 +427,30 @@ export default function GeneratorPage() {
     }
   };
 
-  const exportToWord = () => {
+  const exportToWord = async () => {
     if (!generatedHtml) return;
     const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
     const footer = "</body></html>";
     const sourceHTML = header + `<div dir="rtl" style="font-family: Arial, sans-serif;">` + generatedHtml + `</div>` + footer;
     
-    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-    const fileDownload = document.createElement("a");
-    document.body.appendChild(fileDownload);
-    fileDownload.href = source;
-    fileDownload.download = 'document.doc';
-    fileDownload.click();
-    document.body.removeChild(fileDownload);
+    const blob = new Blob(['\ufeff', sourceHTML], { type: 'application/msword' });
+    
+    let title = 'مستند';
+    if (generationType === 'memo') title = 'مذكرة درس';
+    else if (generationType === 'test') title = 'تقويم';
+    else if (generationType === 'series') title = 'سلسلة تمارين';
+    else if (generationType === 'summary') title = 'ملخص';
+    else if (generationType.startsWith('cutout')) title = 'قصاصات';
+    
+    const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.doc`;
+    
+    try {
+      await addFile(fileName, 'word', blob);
+      if (soundEnabled) soundManager.play('success');
+      setIsDownloadsModalOpen(true);
+    } catch (error) {
+      console.error("Word export failed", error);
+    }
   };
 
   const addExercise = () => setExercises([...exercises, { id: generateId(), section: '', competencies: [''] }]);
@@ -519,6 +548,19 @@ export default function GeneratorPage() {
                 <option value="en">English</option>
               </select>
             </div>
+            
+            <button 
+              onClick={() => setIsDownloadsModalOpen(true)}
+              className="relative p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
+              title="التنزيلات"
+            >
+              <Download size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
             
             <button 
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -1100,6 +1142,11 @@ export default function GeneratorPage() {
 
         </div>
       </main>
+
+      <DownloadsModal 
+        isOpen={isDownloadsModalOpen} 
+        onClose={() => setIsDownloadsModalOpen(false)} 
+      />
     </div>
   );
 }
