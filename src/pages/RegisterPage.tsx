@@ -53,8 +53,6 @@ export default function RegisterPage() {
         isActive: true,
         createdAt: Date.now()
       });
-
-      navigate('/');
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/network-request-failed') {

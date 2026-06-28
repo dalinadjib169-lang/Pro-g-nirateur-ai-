@@ -33,7 +33,6 @@ export default function LoginPage() {
       const formattedEmail = email.includes('@') ? email : `${email}@phone.pro-gen.com`;
       await signInWithEmailAndPassword(auth, formattedEmail, password);
       // Firebase auth persists state by default, rememberMe can be mapped to local/session persistence if needed, but default is fine for now.
-      navigate('/');
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/network-request-failed') {
