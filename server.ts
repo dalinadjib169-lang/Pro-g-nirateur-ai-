@@ -28,12 +28,9 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // Temporary in-memory store for downloads (id -> {buffer, filename, contentType})
-  const tempDownloads = new Map<string, { buffer: Buffer, filename: string, contentType: string }>();
-
   // Endpoint to handle downloading files generated client-side
   // This bypasses WebView restrictions on blob: and data: URIs
-  app.post("/api/download/prepare", (req, res) => {
+  app.post("/api/download", (req, res) => {
     try {
       const { data, filename, contentType } = req.body;
       
@@ -43,35 +40,18 @@ async function startServer() {
       const base64Data = data.includes(';base64,') ? data.split(';base64,').pop() : data;
       const buffer = Buffer.from(base64Data, 'base64');
       
-      const id = Math.random().toString(36).substring(2, 15);
-      tempDownloads.set(id, { buffer, filename, contentType });
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename || 'download')}"`);
+      res.setHeader('Content-Type', contentType || 'application/octet-stream');
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       
-      // Clean up after 10 minutes
-      setTimeout(() => tempDownloads.delete(id), 10 * 60 * 1000);
-      
-      res.json({ id });
+      res.send(buffer);
     } catch (error) {
-      console.error("Prepare download error:", error);
-      res.status(500).send("Error preparing download");
+      console.error("Download endpoint error:", error);
+      res.status(500).send("Error generating download");
     }
-  });
-
-  app.get("/api/download/:id", (req, res) => {
-    const file = tempDownloads.get(req.params.id);
-    if (!file) return res.status(404).send("File not found or expired");
-    
-    // Some Android download managers need explicit headers to know it's a download
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.filename)}"`);
-    res.setHeader('Content-Type', file.contentType || 'application/octet-stream');
-    res.setHeader('Content-Length', file.buffer.length);
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    
-    res.send(file.buffer);
-    
-    // Optionally delete right after sending (but maybe wait to ensure download manager gets it)
-    setTimeout(() => tempDownloads.delete(req.params.id), 60 * 1000);
   });
 
   app.post("/api/generate", async (req, res) => {

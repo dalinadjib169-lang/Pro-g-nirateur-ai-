@@ -20,47 +20,54 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      // For WebViews (like AppCreator24), the safest way is a GET request to a standard URL
-      // that returns a file with Content-Disposition: attachment.
+      // For WebViews (like AppCreator24), downloading via a form POST to a server endpoint
+      // is the most reliable way to trigger the native Android Download Manager.
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         try {
           const base64data = reader.result as string;
           
-          // 1. Send data to server to store temporarily
-          const response = await fetch('/api/download/prepare', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              data: base64data,
-              filename: file.name,
-              contentType: file.type === 'pdf' ? 'application/pdf' : 'application/msword'
-            })
-          });
+          // Create a hidden form
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/api/download';
+          // We don't use target="_blank" because some WebViews block new windows,
+          // and a Content-Disposition: attachment response won't navigate away anyway.
           
-          if (!response.ok) throw new Error('Failed to prepare download');
+          // Input for base64 data
+          const dataInput = document.createElement('input');
+          dataInput.type = 'hidden';
+          dataInput.name = 'data';
+          dataInput.value = base64data;
           
-          const { id } = await response.json();
+          // Input for filename
+          const nameInput = document.createElement('input');
+          nameInput.type = 'hidden';
+          nameInput.name = 'filename';
+          nameInput.value = file.name;
           
-          // 2. Trigger the download using a hidden anchor link
-          // This simulates a real user click on a download link, which AppCreator24 native code handles best
-          const a = document.createElement('a');
-          a.href = `/api/download/${id}`;
-          a.download = file.name;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
+          // Input for content type
+          const typeInput = document.createElement('input');
+          typeInput.type = 'hidden';
+          typeInput.name = 'contentType';
+          typeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
           
+          form.appendChild(dataInput);
+          form.appendChild(nameInput);
+          form.appendChild(typeInput);
+          
+          document.body.appendChild(form);
+          form.submit();
+          
+          // Clean up
           setTimeout(() => {
-            if (document.body.contains(a)) {
-              document.body.removeChild(a);
+            if (document.body.contains(form)) {
+              document.body.removeChild(form);
             }
-          }, 100);
+          }, 1000);
         } catch (err) {
-          console.error("Error in prepare and download:", err);
-          alert("حدث خطأ أثناء تحضير الملف للتحميل.");
+          console.error("Error submitting download form:", err);
+          alert("حدث خطأ أثناء تحميل الملف.");
         }
       };
       reader.readAsDataURL(file.blob);
