@@ -150,14 +150,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (error: any) {
         lastError = error;
         attempts++;
-        console.error(`Attempt ${attempts} failed with key index ${(currentKeyIndex - 1) % apiKeys.length}:`, error.message);
         
-        if (error.status === 429) {
+        // Log the full error to help with debugging
+        const errString = typeof error === 'object' ? JSON.stringify(error) : String(error);
+        const errMsg = error?.message || errString;
+        console.error(`Attempt ${attempts} failed with key index ${(currentKeyIndex - 1) % apiKeys.length}:`, errMsg);
+        
+        const isRateLimit = error?.status === 429 || error?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
+        const isUnavailable = error?.status === 503 || error?.code === 503 || errMsg.includes('503');
+
+        if (isRateLimit) {
           if (attempts >= apiKeys.length) {
             break; // Stop retrying if we exhausted all available keys
           }
           continue;
-        } else if (error.status === 503) {
+        } else if (isUnavailable) {
           await new Promise(resolve => setTimeout(resolve, 2000));
           continue;
         } else if (attempts >= retries) {
@@ -167,7 +174,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!response) {
-      if (lastError?.status === 429 || lastError?.message?.includes('429') || lastError?.message?.includes('quota')) {
+      const errString = typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError);
+      const errMsg = lastError?.message || errString;
+      const isRateLimit = lastError?.status === 429 || lastError?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
+      
+      if (isRateLimit) {
          throw new Error("RATE_LIMIT");
       }
       throw lastError || new Error("Failed to generate content");
@@ -182,10 +193,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ content: htmlContent });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    if (error.message === 'RATE_LIMIT' || error?.status === 429) {
-      return res.status(429).json({ error: "عذراً، هناك ضغط كبير على الخوادم الآن أو تم تجاوز الحد المسموح به. يرجى الانتظار لمدة دقيقة والمحاولة مرة أخرى." });
+    const errString = typeof error === 'object' ? JSON.stringify(error) : String(error);
+    const errMsg = error?.message || errString;
+    console.error("Gemini API Error details:", errString, errMsg);
+    
+    if (errMsg === 'RATE_LIMIT' || error?.status === 429 || error?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+      return res.status(429).json({ error: "عذراً، لقد استنفدت حصتك المجانية للذكاء الاصطناعي أو هناك ضغط كبير. يرجى المحاولة لاحقاً." });
     }
-    res.status(500).json({ error: error.message || "An error occurred during generation." });
+    res.status(500).json({ error: errMsg || "An error occurred during generation." });
   }
 }

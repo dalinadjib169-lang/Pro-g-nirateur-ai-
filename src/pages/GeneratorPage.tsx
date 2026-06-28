@@ -416,7 +416,7 @@ export default function GeneratorPage() {
       const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.pdf`;
       
       await addFile(fileName, 'pdf', pdfBlob);
-      if (soundEnabled) soundManager.play('success');
+      if (soundEnabled) soundManager.playGenerateComplete();
       setIsDownloadsModalOpen(true);
     } catch (error) {
       console.error("PDF generation failed:", error);
@@ -465,7 +465,7 @@ export default function GeneratorPage() {
     
     try {
       await addFile(fileName, 'word', blob);
-      if (soundEnabled) soundManager.play('success');
+      if (soundEnabled) soundManager.playGenerateComplete();
       setIsDownloadsModalOpen(true);
     } catch (error) {
       console.error("Word export failed", error);

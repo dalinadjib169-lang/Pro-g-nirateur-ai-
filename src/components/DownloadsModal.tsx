@@ -23,8 +23,12 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
     try {
       setDownloadingId(file.id);
 
+      // Check if it's an Android WebView (AppCreator24)
+      // Web Share API often crashes these WebViews, so we skip it and force a standard form download.
+      const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
+
       // 1. First attempt: Native Web Share API (Works smoothly on many modern mobile browsers)
-      if (navigator.share && navigator.canShare) {
+      if (navigator.share && navigator.canShare && !isAndroidWebView) {
         const shareFile = new File([file.blob], file.name, { 
           type: file.type === 'pdf' ? 'application/pdf' : 'application/msword' 
         });
@@ -48,20 +52,7 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         }
       }
 
-      // 2. Android WebView Handling (AppCreator24)
-      // Pure web apps CANNOT launch real Android intents to open files natively from within a generic WebView
-      // unless the native app shell explicitly implements URL interception (shouldOverrideUrlLoading) for it.
-      // Trying to force it via window.open, href, or blob URLs will cause AppCreator24 to hard crash.
-      // Therefore, the only safe web-only approach is to instruct the user to open it from their device manager.
-      const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
-      
-      if (isAndroidWebView) {
-        alert("تم حفظ الملف بنجاح. يرجى فتحه من مجلد التنزيلات (Downloads) في مدير ملفات هاتفك.");
-        setDownloadingId(null);
-        return;
-      }
-
-      // 3. Fallback for standard browsers and Word documents: Form submission to backend endpoint
+      // 3. Fallback for standard browsers, Word documents, and WebViews: Form submission to backend endpoint
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;
