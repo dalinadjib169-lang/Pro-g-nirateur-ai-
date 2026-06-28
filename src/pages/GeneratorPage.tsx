@@ -101,11 +101,18 @@ export default function GeneratorPage() {
         const containerWidth = containerRef.current.clientWidth;
         const targetWidth = 794;
         
+        let newScale = 1;
         if (containerWidth > 0 && containerWidth < targetWidth + 16) {
-          setAutoScale(Math.max(0.1, (containerWidth - 16) / targetWidth));
-        } else {
-          setAutoScale(1);
+          newScale = Math.max(0.1, (containerWidth - 16) / targetWidth);
         }
+        
+        setAutoScale(prev => {
+          // Only update if difference is significant to avoid ResizeObserver infinite loops
+          if (Math.abs(prev - newScale) > 0.01) {
+            return newScale;
+          }
+          return prev;
+        });
       }
     };
 
