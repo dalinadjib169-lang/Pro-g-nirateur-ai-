@@ -49,7 +49,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setUserData(docSnap.data() as UserData);
+        const data = docSnap.data() as UserData;
+        
+        // Automatically make 077167330 an admin
+        if (data.email === '077167330@phone.pro-gen.com' && data.role !== 'admin') {
+          await setDoc(docRef, { role: 'admin', generationsRemaining: 9999 }, { merge: true });
+          data.role = 'admin';
+          data.generationsRemaining = 9999;
+        }
+        
+        setUserData(data);
       } else {
         setUserData(null);
       }
