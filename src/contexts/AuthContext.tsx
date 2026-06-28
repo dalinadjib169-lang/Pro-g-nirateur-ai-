@@ -51,14 +51,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (docSnap.exists()) {
         const data = docSnap.data() as UserData;
         
+        // Set userData first so they can log in even if the update fails
+        setUserData(data);
+
         // Automatically make 077167330 an admin
         if (data.email === '077167330@phone.pro-gen.com' && data.role !== 'admin') {
-          await setDoc(docRef, { role: 'admin', generationsRemaining: 9999 }, { merge: true });
-          data.role = 'admin';
-          data.generationsRemaining = 9999;
+          try {
+            await setDoc(docRef, { role: 'admin', generationsRemaining: 9999 }, { merge: true });
+            setUserData({ ...data, role: 'admin', generationsRemaining: 9999 });
+          } catch (e) {
+            console.error('Failed to update admin role automatically:', e);
+          }
         }
-        
-        setUserData(data);
       } else {
         setUserData(null);
       }
