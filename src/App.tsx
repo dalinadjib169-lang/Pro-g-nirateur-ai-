@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { AlertCircle } from 'lucide-react';
+import LoadingScreen from './components/LoadingScreen';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -52,7 +53,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   const { user, userData, loading } = useAuth();
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
+    return <LoadingScreen />;
   }
 
   if (!user || !userData) {

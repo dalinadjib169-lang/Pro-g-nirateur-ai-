@@ -486,61 +486,66 @@ export default function GeneratorPage() {
       </div>
 
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 shadow-sm p-3 md:p-4 no-print sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-center md:justify-start">
-            <div className="relative group cursor-pointer">
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-400 to-red-600 rounded-xl blur group-hover:blur-md transition-all duration-300 opacity-70"></div>
-              <div className="relative bg-gradient-to-br from-amber-500 to-red-600 text-white p-2.5 rounded-xl shadow-lg transform rotate-3 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-amber-300/30">
-                <Sparkles size={28} className="drop-shadow-md text-white" />
+      <header className="bg-[#111] border-b border-amber-900/50 shadow-[0_2px_15px_rgba(212,175,55,0.1)] p-2 md:p-3 no-print sticky top-0 z-40 transition-colors duration-300">
+        <div className="container mx-auto flex flex-row justify-between items-center gap-2">
+          {/* Logo Section */}
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
+              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30">
+                 {/* Replaced Sparkles with a more app-like gold text logo that can be safely swapped with an img */}
+                 <img src="/icon.png" alt="Logo" className="w-full h-full object-cover rounded-[10px] hidden group-hover:block" onError={(e) => e.currentTarget.style.display = 'none'} />
+                 <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
               </div>
             </div>
-            <div className="relative overflow-hidden px-2 py-1 group cursor-default text-center md:text-right">
-              <div className="animate-shine-sweep z-10"></div>
-              <h1 className="relative z-0 text-2xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-red-600 dark:from-amber-400 dark:to-red-500 font-['Space_Grotesk'] tracking-tight leading-none drop-shadow-sm whitespace-nowrap">
-                Pro Générateur AI
+            <div className="flex flex-col shrink-0 truncate">
+              <h1 className="text-lg md:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate" dir="ltr">
+                PRO GÉNIRATEUR AI
               </h1>
-              <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-bold mt-1 tracking-wide whitespace-nowrap">المساعد الذكي للأستاذ</p>
+              <p className="text-[9px] md:text-xs text-amber-500/80 font-bold mt-1 tracking-wide truncate">المساعد الذكي للأستاذ</p>
             </div>
           </div>
-          <div className="flex items-center justify-center gap-2 md:gap-3 w-full md:w-auto flex-wrap">
-            <div className="flex items-center bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Languages size={16} className="text-slate-400 ml-2" />
+
+          {/* Actions Section */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+            <div className="hidden sm:flex items-center bg-[#1a1a1a] p-1 rounded-lg border border-amber-900/30">
+              <Languages size={14} className="text-amber-500/70 ml-1" />
               <select 
                 value={documentLanguage} 
                 onChange={(e) => setDocumentLanguage(e.target.value)}
-                className="bg-transparent border-none text-sm font-bold text-slate-700 dark:text-slate-300 outline-none pr-1 pl-4 cursor-pointer"
+                className="bg-transparent border-none text-xs font-bold text-amber-100 outline-none pr-1 pl-2 cursor-pointer"
               >
                 <option value="ar">العربية</option>
                 <option value="fr">Français</option>
                 <option value="en">English</option>
               </select>
             </div>
+            
             <button 
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors shadow-inner"
+              className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
               title={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
             >
-              {soundEnabled ? <Volume2 size={20} className="text-emerald-500" /> : <VolumeX size={20} className="text-rose-500" />}
-            </button>
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors shadow-inner"
-            >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {soundEnabled ? <Volume2 size={18} className="text-amber-400" /> : <VolumeX size={18} className="text-red-500/80" />}
             </button>
             
-            <div className="flex items-center gap-2 border-r border-slate-200 dark:border-slate-700 pr-3 mr-1">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 hidden sm:block">
-                {userData?.firstName} {userData?.lastName}
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            
+            <div className="flex items-center gap-1.5 md:gap-2 border-r border-amber-900/50 pr-2 md:pr-3 ml-1">
+              <span className="text-xs md:text-sm font-semibold text-amber-200 hidden md:block max-w-[100px] truncate">
+                {userData?.firstName}
               </span>
               {userData?.role === 'admin' && (
-                <button onClick={() => navigate('/admin')} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title="لوحة التحكم">
-                  <Shield size={20} />
+                <button onClick={() => navigate('/admin')} className="p-1.5 md:p-2 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30" title="لوحة التحكم">
+                  <Shield size={18} />
                 </button>
               )}
-              <button onClick={() => { signOut(); navigate('/login'); }} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="تسجيل الخروج">
-                <LogOut size={20} />
+              <button onClick={() => { signOut(); navigate('/login'); }} className="p-1.5 md:p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-500/30" title="تسجيل الخروج">
+                <LogOut size={18} />
               </button>
             </div>
           </div>

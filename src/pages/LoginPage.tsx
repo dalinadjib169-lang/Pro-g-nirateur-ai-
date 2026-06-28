@@ -4,6 +4,7 @@ import { auth } from '../lib/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -32,7 +33,7 @@ export default function LoginPage() {
     try {
       const formattedEmail = email.includes('@') ? email : `${email}@phone.pro-gen.com`;
       await signInWithEmailAndPassword(auth, formattedEmail, password);
-      // Firebase auth persists state by default, rememberMe can be mapped to local/session persistence if needed, but default is fine for now.
+      // Let AuthContext handle the loading and navigation
     } catch (err: any) {
       console.warn(err);
       if (err.code === 'auth/network-request-failed') {
@@ -42,7 +43,6 @@ export default function LoginPage() {
       } else {
         setError('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -61,11 +61,15 @@ export default function LoginPage() {
     }
   };
 
+  if (loading || authLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4" dir="rtl">
       <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 dark:border-slate-700">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 font-['Space_Grotesk'] mb-2 tracking-tight">Pro Générateur AI</h1>
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-yellow-600 font-['Space_Grotesk'] mb-2 tracking-tight">PRO GÉNIRATEUR AI</h1>
           <p className="text-slate-500 dark:text-slate-400">مرحباً بك مجدداً</p>
         </div>
 
