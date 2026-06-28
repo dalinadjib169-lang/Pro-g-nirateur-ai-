@@ -20,49 +20,48 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      // For WebViews (like AppCreator24), downloading via a form POST to a server endpoint
-      // is the most reliable way to trigger the native Android Download Manager.
+      // For WebViews (like AppCreator24), the safest way is a GET request to a standard URL
+      // that returns a file with Content-Disposition: attachment.
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        
-        // Create a hidden form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/api/download';
-        form.target = '_blank'; // Important to prevent navigating away from the app
-        
-        // Input for base64 data
-        const dataInput = document.createElement('input');
-        dataInput.type = 'hidden';
-        dataInput.name = 'data';
-        dataInput.value = base64data;
-        
-        // Input for filename
-        const nameInput = document.createElement('input');
-        nameInput.type = 'hidden';
-        nameInput.name = 'filename';
-        nameInput.value = file.name;
-        
-        // Input for content type
-        const typeInput = document.createElement('input');
-        typeInput.type = 'hidden';
-        typeInput.name = 'contentType';
-        typeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
-        
-        form.appendChild(dataInput);
-        form.appendChild(nameInput);
-        form.appendChild(typeInput);
-        
-        document.body.appendChild(form);
-        form.submit();
-        
-        // Clean up
-        setTimeout(() => {
-          if (document.body.contains(form)) {
-            document.body.removeChild(form);
-          }
-        }, 1000);
+      reader.onloadend = async () => {
+        try {
+          const base64data = reader.result as string;
+          
+          // 1. Send data to server to store temporarily
+          const response = await fetch('/api/download/prepare', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              data: base64data,
+              filename: file.name,
+              contentType: file.type === 'pdf' ? 'application/pdf' : 'application/msword'
+            })
+          });
+          
+          if (!response.ok) throw new Error('Failed to prepare download');
+          
+          const { id } = await response.json();
+          
+          // 2. Trigger the download using a hidden anchor link
+          // This simulates a real user click on a download link, which AppCreator24 native code handles best
+          const a = document.createElement('a');
+          a.href = `/api/download/${id}`;
+          a.download = file.name;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          
+          setTimeout(() => {
+            if (document.body.contains(a)) {
+              document.body.removeChild(a);
+            }
+          }, 100);
+        } catch (err) {
+          console.error("Error in prepare and download:", err);
+          alert("حدث خطأ أثناء تحضير الملف للتحميل.");
+        }
       };
       reader.readAsDataURL(file.blob);
     } catch (error) {
