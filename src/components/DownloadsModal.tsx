@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
 import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
 
-import { storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
 interface DownloadsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -51,8 +48,20 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         }
       }
 
-      // 2. Second attempt: Form submission to backend endpoint (Perfect for AppCreator24 / WebViews)
-      // This avoids sending huge base64 strings to Android Intent manager via href which crashes it.
+      // 2. Android WebView Handling (AppCreator24)
+      // Pure web apps CANNOT launch real Android intents to open files natively from within a generic WebView
+      // unless the native app shell explicitly implements URL interception (shouldOverrideUrlLoading) for it.
+      // Trying to force it via window.open, href, or blob URLs will cause AppCreator24 to hard crash.
+      // Therefore, the only safe web-only approach is to instruct the user to open it from their device manager.
+      const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
+      
+      if (isAndroidWebView) {
+        alert("تم حفظ الملف بنجاح. يرجى فتحه من مجلد التنزيلات (Downloads) في مدير ملفات هاتفك.");
+        setDownloadingId(null);
+        return;
+      }
+
+      // 3. Fallback for standard browsers and Word documents: Form submission to backend endpoint
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;
@@ -60,7 +69,6 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/api/download';
-        form.target = '_blank';
         form.style.display = 'none';
 
         const dataInput = document.createElement('input');

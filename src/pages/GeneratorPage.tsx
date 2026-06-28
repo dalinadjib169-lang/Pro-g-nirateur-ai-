@@ -298,6 +298,13 @@ export default function GeneratorPage() {
       let safeHtml = data.content;
       if (typeof safeHtml === 'string') {
         safeHtml = safeHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
+        // Use DOMParser to ensure all tags are perfectly balanced so it doesn't break React's DOM tree
+        try {
+          const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
+          safeHtml = doc.body.innerHTML;
+        } catch (parseError) {
+          console.error("DOMParser error:", parseError);
+        }
       }
       
       setGeneratedHtml(safeHtml);

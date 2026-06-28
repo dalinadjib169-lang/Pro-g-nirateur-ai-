@@ -49,9 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const docRef = doc(db, 'users', uid);
       
-      // Use Promise.race to enforce a 10-second timeout on getDoc
+      // Use Promise.race to enforce a 3-second timeout on getDoc
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('offline: timeout')), 10000)
+        setTimeout(() => reject(new Error('offline: timeout')), 3000)
       );
       
       const docSnap = await Promise.race([
