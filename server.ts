@@ -3,6 +3,24 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Gather all API keys from environment
+const getApiKeys = () => {
+  const keys: string[] = [];
+  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+  
+  // Also look for GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.
+  Object.keys(process.env).forEach(key => {
+    if (key.startsWith('GEMINI_API_KEY_') && process.env[key]) {
+      keys.push(process.env[key] as string);
+    }
+  });
+  
+  // Deduplicate
+  return [...new Set(keys)];
+};
+
+let currentKeyIndex = 0;
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -10,18 +28,13 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // Initialize Gemini API
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
-
   app.post("/api/generate", async (req, res) => {
     try {
+      const apiKeys = getApiKeys();
+      if (apiKeys.length === 0) {
+        return res.status(500).json({ error: "No API keys configured" });
+      }
+
       const { generationType, teacherInfo, subjectInfo, aiPrompt, documentLanguage, includeWatermark, contentStyle, designStyle, pageFrame } = req.body;
 
       if (!generationType) {
@@ -100,8 +113,24 @@ async function startServer() {
 
       let response;
       let retries = 3;
-      while (retries > 0) {
+      let attempts = 0;
+      let lastError;
+
+      while (attempts < retries) {
         try {
+          // Pick current key and increment
+          const apiKey = apiKeys[currentKeyIndex % apiKeys.length];
+          currentKeyIndex++;
+
+          const ai = new GoogleGenAI({
+            apiKey,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              }
+            }
+          });
+
           response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: userPrompt,
@@ -110,18 +139,30 @@ async function startServer() {
               temperature: 0.7,
             },
           });
-          break;
+          break; // Success
         } catch (error: any) {
-          if (error.status === 503 && retries > 1) {
-            retries--;
+          lastError = error;
+          attempts++;
+          console.error(`Attempt ${attempts} failed with key index ${(currentKeyIndex - 1) % apiKeys.length}:`, error.message);
+          
+          if (error.status === 429) {
+            // Quota exceeded, retry immediately with next key
+            continue;
+          } else if (error.status === 503) {
+            // Service unavailable, wait and retry
             await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
+          } else if (attempts >= retries) {
+            throw error;
           }
-          throw error;
         }
       }
 
-      let htmlContent = response?.text || "";
+      if (!response) {
+        throw lastError || new Error("Failed to generate content");
+      }
+
+      let htmlContent = response.text || "";
       // Clean up markdown code blocks if the model adds them despite instructions
       htmlContent = htmlContent.replace(/```html/gi, '').replace(/```/g, '');
       // Strip <style> tags to prevent breaking the main app UI
