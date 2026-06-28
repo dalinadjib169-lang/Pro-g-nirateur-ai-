@@ -48,7 +48,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserData = async (uid: string) => {
     try {
       const docRef = doc(db, 'users', uid);
-      const docSnap = await getDoc(docRef);
+      
+      // Use Promise.race to enforce a 10-second timeout on getDoc
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('offline: timeout')), 10000)
+      );
+      
+      const docSnap = await Promise.race([
+        getDoc(docRef),
+        timeoutPromise
+      ]) as any;
+      
       if (docSnap.exists()) {
         const data = docSnap.data() as UserData;
         

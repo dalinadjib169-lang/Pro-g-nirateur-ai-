@@ -294,7 +294,13 @@ export default function GeneratorPage() {
       
       if (data?.error) throw new Error(data.error);
       
-      setGeneratedHtml(data.content);
+      // Strip any <style> tags to prevent the AI from accidentally corrupting the global app layout
+      let safeHtml = data.content;
+      if (typeof safeHtml === 'string') {
+        safeHtml = safeHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
+      }
+      
+      setGeneratedHtml(safeHtml);
       
       // Update generation quota in Firestore
       try {
@@ -1013,8 +1019,8 @@ export default function GeneratorPage() {
         {/* Preview Area (A4) */}
         <div className="flex-1 flex flex-col items-center">
           
-          <div className="w-full flex justify-between items-center mb-4 no-print bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <div className="w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4 no-print bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 shrink-0">
               <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-lg">
                 <FileText size={20} />
               </span>

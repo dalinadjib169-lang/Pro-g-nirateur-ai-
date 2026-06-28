@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
 import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
 
+import { storage } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 interface DownloadsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -48,21 +51,49 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         }
       }
 
-      // 2. Fallback for AppCreator24 / Standard Browsers now that downloads are enabled
-      // Convert blob to base64 Data URI which is highly compatible with WebViews
+      // 2. Second attempt: Form submission to backend endpoint (Perfect for AppCreator24 / WebViews)
+      // This avoids sending huge base64 strings to Android Intent manager via href which crashes it.
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;
-        const a = document.createElement('a');
-        a.href = base64data; // Use base64 Data URI
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setDownloadingId(null);
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/api/download';
+        form.target = '_blank';
+        form.style.display = 'none';
+
+        const dataInput = document.createElement('input');
+        dataInput.type = 'hidden';
+        dataInput.name = 'data';
+        dataInput.value = base64data;
+        form.appendChild(dataInput);
+
+        const filenameInput = document.createElement('input');
+        filenameInput.type = 'hidden';
+        filenameInput.name = 'filename';
+        filenameInput.value = file.name;
+        form.appendChild(filenameInput);
+
+        const contentTypeInput = document.createElement('input');
+        contentTypeInput.type = 'hidden';
+        contentTypeInput.name = 'contentType';
+        contentTypeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
+        form.appendChild(contentTypeInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        
+        // Cleanup after a short delay
+        setTimeout(() => {
+          if (document.body.contains(form)) {
+            document.body.removeChild(form);
+          }
+          setDownloadingId(null);
+        }, 1000);
       };
       reader.onerror = () => {
-        // Ultimate fallback to Blob URL if FileReader fails
+        // 3. Final Fallback: Object URL
         const objectUrl = URL.createObjectURL(file.blob);
         const a = document.createElement('a');
         a.href = objectUrl;
@@ -74,7 +105,6 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         setDownloadingId(null);
       };
       reader.readAsDataURL(file.blob);
-      
     } catch (error) {
       console.error("Error in download process:", error);
       alert("حدث خطأ أثناء تحميل الملف.");
