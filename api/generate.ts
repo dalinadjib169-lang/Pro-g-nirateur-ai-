@@ -1,6 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+export const maxDuration = 60; // Set max duration to 60 seconds (Vercel Hobby limit)
+
 const getApiKeys = () => {
   const keys: string[] = [];
   if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);

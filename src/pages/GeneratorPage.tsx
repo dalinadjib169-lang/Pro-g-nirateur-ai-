@@ -281,12 +281,18 @@ export default function GeneratorPage() {
       });
       let data;
       try {
-        data = await res.json();
-      } catch (e) {
-        throw new Error('Server returned an invalid response. Please try again.');
+        if (!res.ok) {
+           if (res.status === 504) throw new Error('انتهى وقت الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
+           const text = await res.text();
+           try { data = JSON.parse(text); } catch(e) { throw new Error(text || 'خطأ في الخادم (Server Error)'); }
+        } else {
+           data = await res.json();
+        }
+      } catch (e: any) {
+        throw new Error(e.message || 'Server returned an invalid response. Please try again.');
       }
       
-      if (data.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.error);
       
       setGeneratedHtml(data.content);
       
@@ -305,9 +311,9 @@ export default function GeneratorPage() {
       }
 
       if (soundEnabled) soundManager.playGenerateComplete();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.');
+      alert(err.message || 'حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsGenerating(false);
     }
