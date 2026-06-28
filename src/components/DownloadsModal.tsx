@@ -19,16 +19,15 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   if (!isOpen) return null;
 
-  const handleOpenOrShare = async (file: DownloadedFile) => {
+  const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
+
+  const handleDownload = async (file: DownloadedFile) => {
     try {
       setDownloadingId(file.id);
 
-      const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
-
       // --- Android WebView (AppCreator24) Handling ---
       if (isAndroidWebView) {
-        // In WebView, we CANNOT use window.open, location.href, or blob URLs.
-        // We must use a standard form POST to an attachment endpoint so the native Download Manager catches it.
+        // Form POST for native Download Manager
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64data = reader.result as string;
@@ -63,7 +62,7 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
             if (document.body.contains(form)) {
               document.body.removeChild(form);
             }
-            alert("تم تنزيل الملف. افتحه من إشعار التنزيل أو من مجلد Downloads.");
+            alert("تم تنزيل الملف. تفقد إشعارات التنزيل أو مجلد Downloads.");
             setDownloadingId(null);
           }, 1000);
         };
@@ -75,8 +74,30 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         return;
       }
 
-      // --- Standard Browsers Handling ---
-      
+      // --- Standard Browsers Handling (Download only) ---
+      const objectUrl = URL.createObjectURL(file.blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setDownloadingId(null);
+
+    } catch (error) {
+      console.error("Error in download process:", error);
+      alert("حدث خطأ أثناء تحميل الملف.");
+      setDownloadingId(null);
+    }
+  };
+
+  const handleOpen = async (file: DownloadedFile) => {
+    if (isAndroidWebView) return; // Completely disabled in WebView
+    
+    try {
+      setDownloadingId(file.id);
+
       // 1. Try Native Web Share API first
       if (navigator.share && navigator.canShare) {
         const shareFile = new File([file.blob], file.name, { 
@@ -102,14 +123,14 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         }
       }
 
-      // 2. Fallback for standard browsers: Open or Download via Blob URL
+      // 2. Fallback for standard browsers: Open via Blob URL in new tab
       const objectUrl = URL.createObjectURL(file.blob);
       const a = document.createElement('a');
       a.href = objectUrl;
-      a.download = file.name;
-      // We can also try to open PDFs in a new tab if preferred, but a.download forces download
       if (file.type === 'pdf') {
          a.target = "_blank"; // Open in new tab if possible
+      } else {
+         a.download = file.name; // Word docs usually can't be opened in a new tab natively
       }
       document.body.appendChild(a);
       a.click();
@@ -118,8 +139,8 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
       setDownloadingId(null);
 
     } catch (error) {
-      console.error("Error in download process:", error);
-      alert("حدث خطأ أثناء تحميل الملف.");
+      console.error("Error in open process:", error);
+      alert("حدث خطأ أثناء فتح الملف.");
       setDownloadingId(null);
     }
   };
@@ -166,10 +187,10 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button 
-                      onClick={() => handleOpenOrShare(file)}
+                      onClick={() => handleDownload(file)}
                       disabled={downloadingId === file.id}
                       className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
-                      title="تنزيل / مشاركة"
+                      title="تنزيل"
                     >
                       {downloadingId === file.id ? (
                         <Loader2 size={18} className="animate-spin" />
@@ -177,6 +198,16 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
                         <Download size={18} />
                       )}
                     </button>
+                    {!isAndroidWebView && (
+                      <button 
+                        onClick={() => handleOpen(file)}
+                        disabled={downloadingId === file.id}
+                        className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
+                        title="فتح / مشاركة"
+                      >
+                        <Share2 size={18} />
+                      </button>
+                    )}
                     <button 
                       onClick={() => deleteFile(file.id)}
                       className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
