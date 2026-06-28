@@ -23,12 +23,62 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
     try {
       setDownloadingId(file.id);
 
-      // Check if it's an Android WebView (AppCreator24)
-      // Web Share API often crashes these WebViews, so we skip it and force a standard form download.
       const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
 
-      // 1. First attempt: Native Web Share API (Works smoothly on many modern mobile browsers)
-      if (navigator.share && navigator.canShare && !isAndroidWebView) {
+      // --- Android WebView (AppCreator24) Handling ---
+      if (isAndroidWebView) {
+        // In WebView, we CANNOT use window.open, location.href, or blob URLs.
+        // We must use a standard form POST to an attachment endpoint so the native Download Manager catches it.
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/api/download';
+          form.style.display = 'none';
+
+          const dataInput = document.createElement('input');
+          dataInput.type = 'hidden';
+          dataInput.name = 'data';
+          dataInput.value = base64data;
+          form.appendChild(dataInput);
+
+          const filenameInput = document.createElement('input');
+          filenameInput.type = 'hidden';
+          filenameInput.name = 'filename';
+          filenameInput.value = file.name;
+          form.appendChild(filenameInput);
+
+          const contentTypeInput = document.createElement('input');
+          contentTypeInput.type = 'hidden';
+          contentTypeInput.name = 'contentType';
+          contentTypeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
+          form.appendChild(contentTypeInput);
+
+          document.body.appendChild(form);
+          form.submit();
+          
+          setTimeout(() => {
+            if (document.body.contains(form)) {
+              document.body.removeChild(form);
+            }
+            alert("تم تنزيل الملف. افتحه من إشعار التنزيل أو من مجلد Downloads.");
+            setDownloadingId(null);
+          }, 1000);
+        };
+        reader.onerror = () => {
+          alert("حدث خطأ أثناء تحميل الملف.");
+          setDownloadingId(null);
+        };
+        reader.readAsDataURL(file.blob);
+        return;
+      }
+
+      // --- Standard Browsers Handling ---
+      
+      // 1. Try Native Web Share API first
+      if (navigator.share && navigator.canShare) {
         const shareFile = new File([file.blob], file.name, { 
           type: file.type === 'pdf' ? 'application/pdf' : 'application/msword' 
         });
@@ -40,70 +90,33 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
               title: file.name,
             });
             setDownloadingId(null);
-            return; // Success via native share!
+            return; 
           } catch (shareError: any) {
             if (shareError.name !== 'AbortError') {
-              console.log("Native share failed, falling back...", shareError);
+              console.log("Native share failed, falling back...");
             } else {
                setDownloadingId(null);
-               return; // User cancelled
+               return; 
             }
           }
         }
       }
 
-      // 3. Fallback for standard browsers, Word documents, and WebViews: Form submission to backend endpoint
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/api/download';
-        form.style.display = 'none';
+      // 2. Fallback for standard browsers: Open or Download via Blob URL
+      const objectUrl = URL.createObjectURL(file.blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = file.name;
+      // We can also try to open PDFs in a new tab if preferred, but a.download forces download
+      if (file.type === 'pdf') {
+         a.target = "_blank"; // Open in new tab if possible
+      }
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setDownloadingId(null);
 
-        const dataInput = document.createElement('input');
-        dataInput.type = 'hidden';
-        dataInput.name = 'data';
-        dataInput.value = base64data;
-        form.appendChild(dataInput);
-
-        const filenameInput = document.createElement('input');
-        filenameInput.type = 'hidden';
-        filenameInput.name = 'filename';
-        filenameInput.value = file.name;
-        form.appendChild(filenameInput);
-
-        const contentTypeInput = document.createElement('input');
-        contentTypeInput.type = 'hidden';
-        contentTypeInput.name = 'contentType';
-        contentTypeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
-        form.appendChild(contentTypeInput);
-
-        document.body.appendChild(form);
-        form.submit();
-        
-        // Cleanup after a short delay
-        setTimeout(() => {
-          if (document.body.contains(form)) {
-            document.body.removeChild(form);
-          }
-          setDownloadingId(null);
-        }, 1000);
-      };
-      reader.onerror = () => {
-        // 3. Final Fallback: Object URL
-        const objectUrl = URL.createObjectURL(file.blob);
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-        setDownloadingId(null);
-      };
-      reader.readAsDataURL(file.blob);
     } catch (error) {
       console.error("Error in download process:", error);
       alert("حدث خطأ أثناء تحميل الملف.");
