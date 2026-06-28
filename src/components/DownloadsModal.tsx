@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
-import { X, FileText, FileBadge, Trash2, Share2, Download } from 'lucide-react';
+import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
+import { storage } from '../lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 interface DownloadsModalProps {
   isOpen: boolean;
@@ -9,6 +11,7 @@ interface DownloadsModalProps {
 
 export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps) {
   const { files, deleteFile, markAsRead } = useDownloads();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -20,59 +23,48 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      // For WebViews (like AppCreator24), downloading via a form POST to a server endpoint
-      // is the most reliable way to trigger the native Android Download Manager.
+      setDownloadingId(file.id);
+      // For WebViews (like AppCreator24), the safest way is a standard GET URL.
+      // We upload to Firebase Storage to get a public URL that Android DownloadManager can use.
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         try {
           const base64data = reader.result as string;
           
-          // Create a hidden form
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/api/download';
-          // We don't use target="_blank" because some WebViews block new windows,
-          // and a Content-Disposition: attachment response won't navigate away anyway.
+          // 1. Upload to Firebase Storage
+          const fileRef = ref(storage, `temp_downloads/${Date.now()}_${file.name}`);
+          await uploadString(fileRef, base64data, 'data_url');
           
-          // Input for base64 data
-          const dataInput = document.createElement('input');
-          dataInput.type = 'hidden';
-          dataInput.name = 'data';
-          dataInput.value = base64data;
+          // 2. Get the public download URL
+          const url = await getDownloadURL(fileRef);
           
-          // Input for filename
-          const nameInput = document.createElement('input');
-          nameInput.type = 'hidden';
-          nameInput.name = 'filename';
-          nameInput.value = file.name;
+          // 3. Trigger download via window.location (safest for Android DownloadManager)
+          window.location.href = url;
           
-          // Input for content type
-          const typeInput = document.createElement('input');
-          typeInput.type = 'hidden';
-          typeInput.name = 'contentType';
-          typeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
-          
-          form.appendChild(dataInput);
-          form.appendChild(nameInput);
-          form.appendChild(typeInput);
-          
-          document.body.appendChild(form);
-          form.submit();
-          
-          // Clean up
-          setTimeout(() => {
-            if (document.body.contains(form)) {
-              document.body.removeChild(form);
-            }
-          }, 1000);
+          setDownloadingId(null);
         } catch (err) {
-          console.error("Error submitting download form:", err);
-          alert("حدث خطأ أثناء تحميل الملف.");
+          console.error("Firebase Storage upload failed:", err);
+          
+          // Fallback to standard base64 download if Storage fails (might crash in AppCreator24 but works in browsers)
+          try {
+            alert("لم نتمكن من استخدام خوادم التخزين السحابي. سنحاول التحميل بالطريقة التقليدية.\nملاحظة: إذا كنت تستخدم تطبيق (AppCreator24)، فقد يغلق التطبيق. يرجى فتح الموقع في متصفح Chrome للتحميل بنجاح.");
+            const base64data = reader.result as string;
+            const a = document.createElement('a');
+            a.href = base64data;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } catch (fallbackErr) {
+            alert("حدث خطأ أثناء تحميل الملف.");
+          }
+          setDownloadingId(null);
         }
       };
       reader.readAsDataURL(file.blob);
     } catch (error) {
       console.error("Error opening or sharing file:", error);
+      setDownloadingId(null);
     }
   };
 
@@ -119,10 +111,15 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
                   <div className="flex items-center gap-2 shrink-0">
                     <button 
                       onClick={() => handleOpenOrShare(file)}
-                      className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors"
-                      title="فتح / مشاركة"
+                      disabled={downloadingId === file.id}
+                      className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
+                      title="تنزيل / مشاركة"
                     >
-                      <Share2 size={18} />
+                      {downloadingId === file.id ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Download size={18} />
+                      )}
                     </button>
                     <button 
                       onClick={() => deleteFile(file.id)}
