@@ -63,7 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           uid,
           firstName: 'متصل',
           lastName: '(بدون إنترنت)',
-          email: user?.email || '',
+          email: '', // Not passing user object directly because it's out of scope here
+          state: '',
+          phase: '',
+          phone: '',
           role: 'user',
           generationsRemaining: 1, // Allow 1 generation just so the UI works, though the API will fail anyway.
           totalGenerations: 0,
