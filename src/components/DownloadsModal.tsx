@@ -20,16 +20,49 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      // For WebViews (like AppCreator24), Base64 data URIs are often the safest and most reliable way to trigger a download
+      // For WebViews (like AppCreator24), downloading via a form POST to a server endpoint
+      // is the most reliable way to trigger the native Android Download Manager.
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;
-        const a = document.createElement('a');
-        a.href = base64data;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        
+        // Create a hidden form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/api/download';
+        form.target = '_blank'; // Important to prevent navigating away from the app
+        
+        // Input for base64 data
+        const dataInput = document.createElement('input');
+        dataInput.type = 'hidden';
+        dataInput.name = 'data';
+        dataInput.value = base64data;
+        
+        // Input for filename
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden';
+        nameInput.name = 'filename';
+        nameInput.value = file.name;
+        
+        // Input for content type
+        const typeInput = document.createElement('input');
+        typeInput.type = 'hidden';
+        typeInput.name = 'contentType';
+        typeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
+        
+        form.appendChild(dataInput);
+        form.appendChild(nameInput);
+        form.appendChild(typeInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+        
+        // Clean up
+        setTimeout(() => {
+          if (document.body.contains(form)) {
+            document.body.removeChild(form);
+          }
+        }, 1000);
       };
       reader.readAsDataURL(file.blob);
     } catch (error) {

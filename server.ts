@@ -28,6 +28,29 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  // Endpoint to handle downloading files generated client-side
+  // This bypasses WebView restrictions on blob: and data: URIs
+  app.post("/api/download", (req, res) => {
+    try {
+      const { data, filename, contentType } = req.body;
+      
+      if (!data) return res.status(400).send("No data provided");
+      
+      // Extract base64 part if it's a data URI
+      const base64Data = data.includes(';base64,') ? data.split(';base64,').pop() : data;
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+      res.setHeader('Content-Type', contentType || 'application/octet-stream');
+      res.setHeader('Content-Length', buffer.length);
+      
+      res.send(buffer);
+    } catch (error) {
+      console.error("Download endpoint error:", error);
+      res.status(500).send("Error generating download");
+    }
+  });
+
   app.post("/api/generate", async (req, res) => {
     try {
       const apiKeys = getApiKeys();
