@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
 import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
-import { storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface DownloadsModalProps {
   isOpen: boolean;
@@ -50,24 +48,21 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         }
       }
 
-      // 2. Second attempt: Upload to Firebase Storage for a public URL (Best for WebViews)
-      try {
-        // Create a unique reference for the file
-        const fileRef = ref(storage, `temp_downloads/${Date.now()}_${file.name}`);
-        
-        // Upload the blob directly
-        await uploadBytes(fileRef, file.blob);
-        
-        // Get the public download URL
-        const url = await getDownloadURL(fileRef);
-        
-        // Open the Firebase Storage URL. Native Android DownloadManager handles this perfectly.
-        // Using window.location.assign is smoother in WebViews than creating a target="_blank" link
-        window.location.assign(url);
-      } catch (uploadError) {
-        console.error("Firebase Storage upload failed:", uploadError);
-        
-        // 3. Final Fallback: Object URL (May fail in WebViews but works in standard browsers)
+      // 2. Fallback for AppCreator24 / Standard Browsers now that downloads are enabled
+      // Convert blob to base64 Data URI which is highly compatible with WebViews
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        const a = document.createElement('a');
+        a.href = base64data; // Use base64 Data URI
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setDownloadingId(null);
+      };
+      reader.onerror = () => {
+        // Ultimate fallback to Blob URL if FileReader fails
         const objectUrl = URL.createObjectURL(file.blob);
         const a = document.createElement('a');
         a.href = objectUrl;
@@ -76,9 +71,10 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      }
+        setDownloadingId(null);
+      };
+      reader.readAsDataURL(file.blob);
       
-      setDownloadingId(null);
     } catch (error) {
       console.error("Error in download process:", error);
       alert("حدث خطأ أثناء تحميل الملف.");
