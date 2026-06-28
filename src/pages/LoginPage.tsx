@@ -34,7 +34,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, formattedEmail, password);
       // Firebase auth persists state by default, rememberMe can be mapped to local/session persistence if needed, but default is fine for now.
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       if (err.code === 'auth/network-request-failed') {
         setError('تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت أو محاولة فتح التطبيق في نافذة جديدة.');
       } else if (err.code === 'auth/invalid-credential') {

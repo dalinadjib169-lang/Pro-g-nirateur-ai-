@@ -54,7 +54,7 @@ export default function RegisterPage() {
         createdAt: Date.now()
       });
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       if (err.code === 'auth/network-request-failed') {
         setError('تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت أو محاولة فتح التطبيق في نافذة جديدة.');
       } else if (err.code === 'auth/email-already-in-use') {

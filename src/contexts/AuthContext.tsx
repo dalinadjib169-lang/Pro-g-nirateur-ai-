@@ -67,21 +67,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData(null);
       }
     } catch (error: any) {
-      console.error('Error fetching user data:', error);
+      console.warn('Error fetching user data:', error);
       // Gracefully handle offline errors by allowing a fallback or just empty data if we can't fetch it.
-      if (error?.message?.includes('offline') || error?.code === 'unavailable') {
+      if (error?.message?.includes('offline') || error?.code === 'unavailable' || String(error).includes('offline')) {
         // We're offline, but we still want to allow the user to see the UI if they are logged in.
         // We can create a temporary offline user object.
+        const currentUser = auth.currentUser;
+        const isOfflineAdmin = currentUser?.email === '077167330@phone.pro-gen.com';
         setUserData({
           uid,
           firstName: 'متصل',
           lastName: '(بدون إنترنت)',
-          email: '', // Not passing user object directly because it's out of scope here
+          email: currentUser?.email || '', 
           state: '',
           phase: '',
           phone: '',
-          role: 'user',
-          generationsRemaining: 1, // Allow 1 generation just so the UI works, though the API will fail anyway.
+          role: isOfflineAdmin ? 'admin' : 'user',
+          generationsRemaining: isOfflineAdmin ? 9999 : 1, 
           totalGenerations: 0,
           isActive: true,
           createdAt: Date.now()
