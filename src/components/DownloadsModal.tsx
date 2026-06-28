@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
-import { X, FileText, FileBadge, Trash2, Share2, Download, ExternalLink } from 'lucide-react';
+import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
+import { storage } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface DownloadsModalProps {
   isOpen: boolean;
@@ -9,6 +11,7 @@ interface DownloadsModalProps {
 
 export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps) {
   const { files, deleteFile, markAsRead } = useDownloads();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -20,19 +23,66 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
+      setDownloadingId(file.id);
+
+      // 1. First attempt: Native Web Share API (Works smoothly on many modern mobile browsers)
+      if (navigator.share && navigator.canShare) {
+        const shareFile = new File([file.blob], file.name, { 
+          type: file.type === 'pdf' ? 'application/pdf' : 'application/msword' 
+        });
+        
+        if (navigator.canShare({ files: [shareFile] })) {
+          try {
+            await navigator.share({
+              files: [shareFile],
+              title: file.name,
+            });
+            setDownloadingId(null);
+            return; // Success via native share!
+          } catch (shareError: any) {
+            if (shareError.name !== 'AbortError') {
+              console.log("Native share failed, falling back...", shareError);
+            } else {
+               setDownloadingId(null);
+               return; // User cancelled
+            }
+          }
+        }
+      }
+
+      // 2. Second attempt: Upload to Firebase Storage for a public URL (Best for WebViews)
+      try {
+        // Create a unique reference for the file
+        const fileRef = ref(storage, `temp_downloads/${Date.now()}_${file.name}`);
+        
+        // Upload the blob directly
+        await uploadBytes(fileRef, file.blob);
+        
+        // Get the public download URL
+        const url = await getDownloadURL(fileRef);
+        
+        // Open the Firebase Storage URL. Native Android DownloadManager handles this perfectly.
+        // Using window.location.assign is smoother in WebViews than creating a target="_blank" link
+        window.location.assign(url);
+      } catch (uploadError) {
+        console.error("Firebase Storage upload failed:", uploadError);
+        
+        // 3. Final Fallback: Object URL (May fail in WebViews but works in standard browsers)
+        const objectUrl = URL.createObjectURL(file.blob);
         const a = document.createElement('a');
-        a.href = base64data;
+        a.href = objectUrl;
         a.download = file.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      };
-      reader.readAsDataURL(file.blob);
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      }
+      
+      setDownloadingId(null);
     } catch (error) {
-      console.error("Error opening or sharing file:", error);
+      console.error("Error in download process:", error);
+      alert("حدث خطأ أثناء تحميل الملف.");
+      setDownloadingId(null);
     }
   };
 
@@ -59,21 +109,6 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
           </button>
         </div>
         
-        <div className="p-4 bg-amber-500/10 border-b border-amber-500/20">
-          <p className="text-amber-200 text-sm mb-3">
-            ملاحظة: إذا كان زر التحميل لا يعمل أو يغلق التطبيق، يرجى فتح الموقع في متصفح الهاتف الخارجي (مثل Chrome) وسيتم التحميل بنجاح هناك.
-          </p>
-          <a 
-            href="https://pro-g-nirateur-ai.vercel.app/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg transition-colors"
-          >
-            <ExternalLink size={18} />
-            فتح في المتصفح الخارجي
-          </a>
-        </div>
-        
         <div className="p-4 flex-1 overflow-y-auto">
           {files.length === 0 ? (
             <div className="text-center text-amber-500/50 py-12 flex flex-col items-center">
@@ -94,10 +129,15 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
                   <div className="flex items-center gap-2 shrink-0">
                     <button 
                       onClick={() => handleOpenOrShare(file)}
-                      className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors flex items-center justify-center min-w-[36px]"
+                      disabled={downloadingId === file.id}
+                      className="p-2 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
                       title="تنزيل / مشاركة"
                     >
-                      <Download size={18} />
+                      {downloadingId === file.id ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Download size={18} />
+                      )}
                     </button>
                     <button 
                       onClick={() => deleteFile(file.id)}
