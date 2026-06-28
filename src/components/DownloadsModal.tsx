@@ -20,39 +20,20 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const handleOpenOrShare = async (file: DownloadedFile) => {
     try {
-      if (navigator.share) {
-        // Try to share the file (works well on Android WebViews for downloading to device)
-        const fileObj = new File([file.blob], file.name, { type: file.blob.type });
-        await navigator.share({
-          files: [fileObj],
-          title: file.name,
-        });
-      } else {
-        // Fallback to object URL download
-        const url = URL.createObjectURL(file.blob);
+      // For WebViews (like AppCreator24), Base64 data URIs are often the safest and most reliable way to trigger a download
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
         const a = document.createElement('a');
-        a.href = url;
+        a.href = base64data;
         a.download = file.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
+      };
+      reader.readAsDataURL(file.blob);
     } catch (error) {
       console.error("Error opening or sharing file:", error);
-      // If share fails or is aborted, fallback to simple download
-      try {
-        const url = URL.createObjectURL(file.blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch (fallbackError) {
-        console.error("Fallback download failed:", fallbackError);
-      }
     }
   };
 

@@ -352,24 +352,28 @@ export default function GeneratorPage() {
 
   const exportToPDF = async () => {
     
-    const element = document.querySelector('.a4-page') as HTMLElement;
-    if (!element) return;
+    const originalElement = document.querySelector('.a4-page') as HTMLElement;
+    if (!originalElement) return;
 
-    // Save original styles
-    const originalTransform = element.style.transform;
-    const originalPosition = element.style.position;
-    const originalOverflow = element.style.overflow;
-    const originalWidth = element.style.width;
+    // Clone the element to avoid breaking the UI during generation
+    const clone = originalElement.cloneNode(true) as HTMLElement;
     
-    // For PDF generation, remove scale and ensure visibility and exact pixel width
-    element.style.transform = 'none';
-    element.style.position = 'relative';
-    element.style.overflow = 'visible';
-    element.style.width = '794px';
+    // Create a temporary container off-screen
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '794px';
+    tempContainer.appendChild(clone);
+    document.body.appendChild(tempContainer);
 
-    const container = containerRef.current;
-    const containerOriginalOverflow = container ? container.style.overflow : '';
-    if (container) container.style.overflow = 'visible';
+    // Apply PDF-specific styles to the clone
+    clone.style.transform = 'none';
+    clone.style.position = 'relative';
+    clone.style.overflow = 'visible';
+    clone.style.width = '100%';
+    clone.style.margin = '0';
+    clone.style.boxShadow = 'none';
 
     const opt = {
       margin:       [5, 0] as [number, number],
@@ -381,7 +385,7 @@ export default function GeneratorPage() {
     };
 
     try {
-      const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
+      const pdfBlob = await html2pdf().from(clone).set(opt).output('blob');
       
       let title = 'مستند';
       if (generationType === 'memo') title = 'مذكرة درس';
@@ -398,12 +402,8 @@ export default function GeneratorPage() {
     } catch (error) {
       console.error("PDF generation failed:", error);
     } finally {
-      // Restore original styles
-      element.style.transform = originalTransform;
-      element.style.position = originalPosition;
-      element.style.overflow = originalOverflow;
-      element.style.width = originalWidth;
-      if (container) container.style.overflow = containerOriginalOverflow;
+      // Remove the temporary clone from DOM
+      document.body.removeChild(tempContainer);
     }
   };
 
