@@ -120,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     let response;
-    let retries = 3;
+    let retries = Math.max(3, apiKeys.length);
     let attempts = 0;
     let lastError;
 
@@ -153,6 +153,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error(`Attempt ${attempts} failed with key index ${(currentKeyIndex - 1) % apiKeys.length}:`, error.message);
         
         if (error.status === 429) {
+          if (attempts >= apiKeys.length) {
+            break; // Stop retrying if we exhausted all available keys
+          }
           continue;
         } else if (error.status === 503) {
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -164,6 +167,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!response) {
+      if (lastError?.status === 429 || lastError?.message?.includes('429') || lastError?.message?.includes('quota')) {
+         throw new Error("RATE_LIMIT");
+      }
       throw lastError || new Error("Failed to generate content");
     }
 
@@ -177,6 +183,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ content: htmlContent });
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+    if (error.message === 'RATE_LIMIT' || error?.status === 429) {
+      return res.status(429).json({ error: "عذراً، هناك ضغط كبير على الخوادم الآن أو تم تجاوز الحد المسموح به. يرجى الانتظار لمدة دقيقة والمحاولة مرة أخرى." });
+    }
     res.status(500).json({ error: error.message || "An error occurred during generation." });
   }
 }
