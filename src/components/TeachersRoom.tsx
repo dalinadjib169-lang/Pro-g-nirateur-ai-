@@ -373,7 +373,7 @@ export const TeachersRoom: React.FC = () => {
             title="قاعة الأساتذة"
           >
             {userData.profilePic ? (
-              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" />
+              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               <User size={28} className="text-white" />
             )}
@@ -403,7 +403,7 @@ export const TeachersRoom: React.FC = () => {
                   <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-fuchsia-500 rounded-full blur-sm opacity-80 animate-pulse"></div>
                   <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white relative overflow-hidden">
                     {userData.profilePic ? (
-                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <User className="w-full h-full p-2 text-indigo-300" />
                     )}
@@ -456,7 +456,7 @@ export const TeachersRoom: React.FC = () => {
                           <button 
                             onClick={() => bannerInputRef.current?.click()}
                             disabled={isUploadingBanner}
-                            className="absolute top-2 left-2 bg-white/20 hover:bg-white/40 backdrop-blur text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs"
+                            className="absolute top-2 left-2 bg-black/40 hover:bg-black/60 backdrop-blur text-white p-1.5 rounded-lg transition-all flex items-center gap-1 text-xs shadow-lg"
                           >
                             {isUploadingBanner ? (
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -541,7 +541,7 @@ export const TeachersRoom: React.FC = () => {
                         <div className="relative">
                           <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${teacher.email === 'dalinadjib1990@gmail.com' ? 'border-amber-500' : 'border-indigo-100 dark:border-indigo-900'}`}>
                             {teacher.profilePic ? (
-                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" />
+                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             ) : (
                               <div className="w-full h-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-500">
                                 <User size={20} />
@@ -583,7 +583,7 @@ export const TeachersRoom: React.FC = () => {
                     </button>
                     <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 overflow-hidden">
                       {activeChat.profilePic ? (
-                        <img src={activeChat.profilePic} className="w-full h-full object-cover" />
+                        <img src={activeChat.profilePic} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <User className="w-full h-full p-1.5 text-indigo-500" />
                       )}

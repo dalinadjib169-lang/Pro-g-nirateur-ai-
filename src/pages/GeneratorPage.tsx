@@ -1356,44 +1356,49 @@ export default function GeneratorPage() {
               </div>
             </div>
 
-            {(isGenerating || generatedHtml) ? (
-              <button 
-                onClick={() => {
-                  if (abortControllerRef.current) {
-                    abortControllerRef.current.abort();
-                  }
-                  if (soundEnabled) soundManager.playTabClick();
-                  setGeneratedHtml('');
-                  setIsGenerating(false); // Also stop generating state
-                }} 
-                className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white p-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-red-500/30 border border-red-400"
-              >
-                <X size={22} />
-                تراجع عن التوليد (مسح وإعادة)
-              </button>
-            ) : (
-              <button 
-                onClick={handleGenerate} 
-                disabled={isGenerating}
-                className={getGenerateButtonClasses()}
-                style={{ backgroundSize: '200% auto' }}
-              >
-                {isGenerating ? (
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="flex items-center gap-3">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                      <span>جاري التوليد الخارق...</span>
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3 mt-4">
+              {(!generatedHtml) && (
+                <button 
+                  onClick={handleGenerate} 
+                  disabled={isGenerating}
+                  className={getGenerateButtonClasses()}
+                  style={{ backgroundSize: '200% auto' }}
+                >
+                  {isGenerating ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-3">
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>جاري التوليد الخارق...</span>
+                      </div>
+                      <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
                     </div>
-                    <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-3">
-                    <Zap size={22} className="fill-current" />
-                    توليد حصري مميز
-                  </div>
-                )}
-              </button>
-            )}
+                  ) : (
+                    <div className="flex items-center justify-center gap-3">
+                      <Zap size={22} className="fill-current" />
+                      توليد حصري مميز
+                    </div>
+                  )}
+                </button>
+              )}
+
+              {(isGenerating || generatedHtml) && (
+                <button 
+                  onClick={() => {
+                    if (abortControllerRef.current) {
+                      abortControllerRef.current.abort();
+                    }
+                    if (soundEnabled) soundManager.playTabClick();
+                    setGeneratedHtml('');
+                    setIsGenerating(false);
+                  }} 
+                  className="w-full bg-red-500 hover:bg-red-600 text-white p-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-red-500/30 border border-red-400"
+                >
+                  <X size={22} />
+                  تراجع عن التوليد (إلغاء ومسح)
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
