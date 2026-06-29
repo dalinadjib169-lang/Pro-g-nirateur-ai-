@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../lib/firebase';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, UserData } from '../contexts/AuthContext';
-import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit, Plus, RefreshCw } from 'lucide-react';
+import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit, Plus, RefreshCw, Home } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const { userData } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,53 +224,78 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900" dir="rtl">
-      {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-64 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-sm p-4">
-        <div className="mb-8 text-center">
-          <div className="w-20 h-20 mx-auto rounded-full bg-slate-200 overflow-hidden mb-3">
-            {profilePic ? (
-              <img src={profilePic} alt="Admin" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-400">👤</div>
-            )}
-          </div>
-          <h2 className="font-bold text-slate-800 dark:text-white">{userData?.firstName} {userData?.lastName}</h2>
-          <p className="text-xs text-slate-500">لوحة تحكم المسؤول</p>
-        </div>
+      {/* Top Navbar */}
+      <nav className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)]">
+                {profilePic ? (
+                  <img src={profilePic} alt="Admin" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-400">👤</div>
+                )}
+              </div>
+              <div className="hidden sm:block">
+                <h2 className="font-bold text-slate-800 dark:text-white text-sm">{userData?.firstName} {userData?.lastName}</h2>
+                <p className="text-xs text-slate-500 mb-0.5">لوحة تحكم المسؤول</p>
+                <p className="text-[10px] text-indigo-500 font-semibold">المهندس المطور dali nadjib</p>
+              </div>
+            </div>
 
-        <nav className="space-y-2">
-          <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === 'users' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
-            <Users size={18} /> المستخدمين
-          </button>
-          <button onClick={() => setActiveTab('keys')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === 'keys' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
-            <Key size={18} /> مفاتيح التوليد
-          </button>
-          <button onClick={() => setActiveTab('codes')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === 'codes' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
-            <BarChart3 size={18} /> أكواد التفعيل
-          </button>
-          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
-            <Settings size={18} /> الإعدادات
-          </button>
-        </nav>
-      </div>
+            <div className="flex items-center space-x-1 sm:space-x-2 space-x-reverse overflow-x-auto no-scrollbar pb-1">
+              <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${activeTab === 'users' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                <Users size={18} className="text-blue-500" /> <span className="hidden sm:inline">المستخدمين</span>
+              </button>
+              <button onClick={() => setActiveTab('keys')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${activeTab === 'keys' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                <Key size={18} className="text-amber-500" /> <span className="hidden sm:inline">المفاتيح</span>
+              </button>
+              <button onClick={() => setActiveTab('codes')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${activeTab === 'codes' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                <BarChart3 size={18} className="text-emerald-500" /> <span className="hidden sm:inline">الأكواد</span>
+              </button>
+              <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                <Settings size={18} className="text-purple-500" /> <span className="hidden sm:inline">الإعدادات</span>
+              </button>
+              <button onClick={() => navigate('/')} className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700`}>
+                <Home size={18} className="text-slate-400" /> <span className="hidden sm:inline">الرئيسية</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
 
       {/* Main Content */}
-      <div className="mr-64 p-8">
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-8">لوحة تحكم Pro Générateur AI</h1>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white mb-6 sm:mb-8">لوحة تحكم Pro Générateur AI</h1>
         
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-            <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">إجمالي المستخدمين</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{totalUsers}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium mb-1">إجمالي المستخدمين</h3>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">{totalUsers}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+              <Users className="text-blue-500" size={24} />
+            </div>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-            <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">إجمالي التوليدات</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{totalGenerations}</p>
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium mb-1">إجمالي التوليدات</h3>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">{totalGenerations}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+              <BarChart3 className="text-purple-500" size={24} />
+            </div>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-            <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">المشتركين (باقة مدفوعة)</h3>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white">{activeSubscribers}</p>
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium mb-1">المشتركين (باقة مدفوعة)</h3>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">{activeSubscribers}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+              <Users className="text-emerald-500" size={24} />
+            </div>
           </div>
         </div>
 

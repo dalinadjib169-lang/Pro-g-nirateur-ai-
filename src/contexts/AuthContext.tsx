@@ -65,8 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Set userData first so they can log in even if the update fails
         setUserData(data);
 
-        // Automatically make 0771167330 an admin
-        const isAdminUser = data.email?.includes('0771167330') || data.phone?.includes('0771167330');
+        // Automatically make admins
+        const isAdminUser = data.email?.includes('0771167330') || data.phone?.includes('0771167330') || data.email === 'dalinadjib1990@gmail.com';
         
         if (isAdminUser && data.role !== 'admin') {
           try {
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // We're offline, but we still want to allow the user to see the UI if they are logged in.
         // We can create a temporary offline user object.
         const currentUser = auth.currentUser;
-        const isOfflineAdmin = currentUser?.email?.includes('0771167330');
+        const isOfflineAdmin = currentUser?.email?.includes('0771167330') || currentUser?.email === 'dalinadjib1990@gmail.com';
         setUserData({
           uid,
           firstName: 'متصل',

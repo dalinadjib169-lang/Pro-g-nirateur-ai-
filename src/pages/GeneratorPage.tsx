@@ -4,6 +4,8 @@ import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
@@ -69,6 +71,11 @@ export default function GeneratorPage() {
   const [examType, setExamType] = useState('فرض 1');
   const [examTerm, setExamTerm] = useState('الفصل الأول');
   const [examDuration, setExamDuration] = useState('ساعة واحدة');
+  
+  const [selectedProfileImage, setSelectedProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -225,6 +232,62 @@ export default function GeneratorPage() {
     const selected = designStyles.find(s => s.id === styleId);
     if (selected) {
       setDocColor(selected.color);
+    }
+  };
+
+  const profileInputRef = useRef<HTMLInputElement>(null);
+  const handleProfileImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedProfileImage(file);
+      setProfileImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleProfileSave = async () => {
+    if (!selectedProfileImage || !userData) return;
+    setIsUploadingProfile(true);
+    setUploadProgress(10);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedProfileImage);
+      formData.append('upload_preset', 'ml_default');
+      
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
+
+      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if(data.secure_url) {
+        await updateDoc(doc(db, 'users', userData.uid), {
+          profilePic: data.secure_url
+        });
+        refreshUserData();
+        setSelectedProfileImage(null);
+        setProfileImagePreview(null);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('حدث خطأ أثناء رفع الصورة');
+    } finally {
+      setIsUploadingProfile(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleProfileCancel = () => {
+    setSelectedProfileImage(null);
+    setProfileImagePreview(null);
+    if (profileInputRef.current) {
+      profileInputRef.current.value = '';
     }
   };
 
@@ -597,7 +660,21 @@ export default function GeneratorPage() {
             </button>
             
             <div className="flex items-center gap-1.5 md:gap-2 border-r border-amber-900/50 pr-2 md:pr-3 ml-1">
-              <span className="text-xs md:text-sm font-semibold text-amber-200 hidden md:block max-w-[100px] truncate">
+              <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
+              <button 
+                onClick={() => profileInputRef.current?.click()}
+                className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] relative group"
+                title="تغيير الصورة الشخصية"
+              >
+                {(profileImagePreview || userData?.profilePic) ? (
+                  <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
+                ) : (
+                  <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
+                    <User size={16} />
+                  </div>
+                )}
+              </button>
+              <span className="text-xs md:text-sm font-semibold text-amber-200 hidden md:block max-w-[100px] truncate mr-1">
                 {userData?.firstName}
               </span>
               {userData?.role === 'admin' && (
@@ -620,10 +697,55 @@ export default function GeneratorPage() {
           {/* Teacher Profile Card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-800 p-6 overflow-hidden relative group">
             <div className="absolute top-0 right-0 w-1.5 h-full bg-gradient-to-b from-indigo-500 to-purple-500 group-hover:w-2 transition-all"></div>
-            <h2 className="text-xl font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-white">
-              <User className="text-indigo-500" size={22} />
-              معلومات الأستاذ
-            </h2>
+            <div className="flex justify-between items-start mb-5">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                <User className="text-indigo-500" size={22} />
+                معلومات الأستاذ
+              </h2>
+              <div className="flex flex-col items-center gap-2">
+                <button 
+                  onClick={() => profileInputRef.current?.click()}
+                  className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] relative group"
+                  title="تغيير الصورة الشخصية"
+                >
+                  {(profileImagePreview || userData?.profilePic) ? (
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
+                      <User size={24} />
+                    </div>
+                  )}
+                </button>
+                {selectedProfileImage && (
+                  <div className="flex flex-col items-center gap-1 w-full mt-1">
+                    <div className="flex gap-1 w-full justify-center">
+                      <button 
+                        onClick={handleProfileSave}
+                        disabled={isUploadingProfile}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] px-2 py-1 rounded disabled:opacity-50"
+                      >
+                        {isUploadingProfile ? 'جاري الحفظ...' : 'حفظ'}
+                      </button>
+                      <button 
+                        onClick={handleProfileCancel}
+                        disabled={isUploadingProfile}
+                        className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-[10px] px-2 py-1 rounded disabled:opacity-50"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                    {isUploadingProfile && (
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1 mt-1 overflow-hidden">
+                        <div 
+                          className="bg-indigo-500 h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Quota Progress Bar */}
             <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
