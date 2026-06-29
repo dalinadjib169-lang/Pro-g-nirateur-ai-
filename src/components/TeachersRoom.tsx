@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User } from 'lucide-react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
@@ -385,6 +385,33 @@ export const TeachersRoom: React.FC = () => {
                     </div>
                   </div>
                   
+                  <div className="mb-4">
+                    <button 
+                      onClick={() => {
+                        import('../App').then(m => m.expertChatEmitter.dispatchEvent(new Event('open')));
+                      }}
+                      className="w-full flex items-center gap-3 p-3 bg-gradient-to-l from-amber-500/10 to-yellow-600/10 hover:from-amber-500/20 hover:to-yellow-600/20 rounded-xl border border-amber-500/30 transition-all text-right group"
+                    >
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-500 shadow-lg shadow-amber-500/20 flex items-center justify-center bg-slate-800">
+                          <img src="/icon.png" alt="الخبير التربوي" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800 z-10"></div>
+                      </div>
+                      
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex justify-between items-center mb-0.5">
+                          <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate flex items-center gap-1">
+                            الخبير التربوي دالي <Sparkles size={12} className="text-amber-500" />
+                          </h5>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          ذكاء اصطناعي خبير في البيداغوجيا والقوانين
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+
                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 px-1 uppercase tracking-wider">الأساتذة المتاحين</h4>
                   
                   <div className="space-y-2">

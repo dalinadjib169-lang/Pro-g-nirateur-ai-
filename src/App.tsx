@@ -79,7 +79,20 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   return <>{children}</>;
 };
 
+import { ExpertChat } from './components/ExpertChat';
+
+// Add export event emitter for expert chat
+export const expertChatEmitter = new EventTarget();
+
 function AppRoutes() {
+  const [isExpertChatOpen, setIsExpertChatOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleOpen = () => setIsExpertChatOpen(true);
+    expertChatEmitter.addEventListener('open', handleOpen);
+    return () => expertChatEmitter.removeEventListener('open', handleOpen);
+  }, []);
+
   return (
     <>
       <Routes>
@@ -103,6 +116,7 @@ function AppRoutes() {
         />
       </Routes>
       <TeachersRoom />
+      <ExpertChat isOpen={isExpertChatOpen} onClose={() => setIsExpertChatOpen(false)} />
     </>
   );
 }

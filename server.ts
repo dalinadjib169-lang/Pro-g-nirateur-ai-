@@ -207,6 +207,77 @@ async function startServer() {
     }
   });
 
+  app.post("/api/expert", async (req, res) => {
+    try {
+      const apiKeys = getApiKeys();
+      if (apiKeys.length === 0) {
+        return res.status(500).json({ error: "No API keys configured" });
+      }
+
+      const { messages } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "messages array is required" });
+      }
+
+      const systemInstruction = `أنت الخبير التربوي دالي نجيب، خبير في الشؤون التربوية، البيداغوجيا، الديداكتيك، قوانين التدريس، واجبات المعلم، علم النفس التربوي، حساب الدرجات، الترقيات، وكل ما يخص مسار الأستاذ مهنياً.
+يجب أن تجيب على أسئلة الأستاذ بلغة عربية سليمة وواضحة، وبأسلوب مهني وأخوي.
+دائما في نهاية إجابتك، قم بطرح سؤال قصير لاختبار مدى استيعاب الأستاذ للشرح الذي قدمته له لتتأكد من فهمه، ويجب أن يكون السؤال متعلقا حصريا بالموضوع الذي سأل عنه الأستاذ للتو.`;
+
+      let response;
+      let retries = 3;
+      let attempts = 0;
+      let lastError;
+
+      // Transform messages into Gemini format
+      const geminiMessages = messages.map((m: any) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+      }));
+
+      while (attempts < retries) {
+        try {
+          const apiKey = apiKeys[currentKeyIndex % apiKeys.length];
+          currentKeyIndex++;
+
+          const ai = new GoogleGenAI({ apiKey });
+
+          response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: geminiMessages,
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+            },
+          });
+          break; // Success
+        } catch (error: any) {
+          lastError = error;
+          attempts++;
+          console.error(`Expert API Attempt ${attempts} failed:`, error.message);
+          
+          if (error.status === 429) {
+            continue;
+          } else if (error.status === 503) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          } else if (attempts >= retries) {
+            throw error;
+          }
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("Failed to generate content");
+      }
+
+      res.json({ content: response.text });
+    } catch (error: any) {
+      console.error("Gemini Expert API Error:", error);
+      res.status(500).json({ error: error.message || "An error occurred during generation." });
+    }
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

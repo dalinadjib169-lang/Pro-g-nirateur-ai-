@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield } from 'lucide-react';
+import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Image as ImageIcon } from 'lucide-react';
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
@@ -9,6 +9,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
+import { expertChatEmitter } from '../App';
 
 // Simple unique ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -94,6 +95,14 @@ export default function GeneratorPage() {
     }
     return () => clearInterval(interval);
   }, [isGenerating]);
+  useEffect(() => {
+    if (generationType === 'visual' && !designStyle.startsWith('visual_')) {
+      setDesignStyle('visual_nature');
+    } else if (generationType !== 'visual' && designStyle.startsWith('visual_')) {
+      setDesignStyle('style1');
+    }
+  }, [generationType, designStyle]);
+
   const [previewFontSize, setPreviewFontSize] = useState(16);
   const [docColor, setDocColor] = useState('#1e40af');
   const [documentLanguage, setDocumentLanguage] = useState('ar');
@@ -228,7 +237,7 @@ export default function GeneratorPage() {
 
   const isFreeMode = userData && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com' && !userData.isPro;
 
-  const designStyles = [
+  let designStyles = [
     { id: 'style1', label: 'كلاسيكي', icon: BookOpen, color: '#1e40af', twColor: 'text-blue-600', twBg: 'bg-blue-100', twBorder: 'border-blue-200' },
     { id: 'style5', label: 'داكن', icon: Printer, color: '#334155', twColor: 'text-slate-700', twBg: 'bg-slate-200', twBorder: 'border-slate-300' },
     ...(isFreeMode ? [] : [
@@ -244,6 +253,14 @@ export default function GeneratorPage() {
       { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200' }
     ])
   ];
+
+  if (generationType === 'visual') {
+    designStyles = [
+      { id: 'visual_nature', label: 'تفاعلي - طبيعة (أخضر)', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200' },
+      { id: 'visual_elegant', label: 'تفاعلي - أناقة (بنفسجي)', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200' },
+      { id: 'visual_geometric', label: 'تفاعلي - هندسي (برتقالي)', icon: Hexagon, color: '#f97316', twColor: 'text-orange-600', twBg: 'bg-orange-100', twBorder: 'border-orange-200' }
+    ];
+  }
 
   const contentStyles = [
     { id: 'concise', label: 'مختصر هادف', icon: Zap },
@@ -343,7 +360,7 @@ export default function GeneratorPage() {
     setGeneratedHtml('');
     
     let subjectInfo: SubjectInfo = {};
-    if (generationType === 'memo' || generationType === 'summary' || generationType.startsWith('cutout')) {
+    if (generationType === 'memo' || generationType === 'summary' || generationType === 'visual' || generationType.startsWith('cutout')) {
       subjectInfo = { section: memoSection, domain: memoDomain, content: memoContent };
     } else {
       subjectInfo = { 
@@ -509,6 +526,7 @@ export default function GeneratorPage() {
       else if (generationType === 'test') title = 'تقويم';
       else if (generationType === 'series') title = 'سلسلة تمارين';
       else if (generationType === 'summary') title = 'ملخص';
+      else if (generationType === 'visual') title = 'وثيقة تفاعلية';
       else if (generationType.startsWith('cutout')) title = 'قصاصات';
       
       const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.pdf`;
@@ -557,6 +575,7 @@ export default function GeneratorPage() {
     else if (generationType === 'test') title = 'تقويم';
     else if (generationType === 'series') title = 'سلسلة تمارين';
     else if (generationType === 'summary') title = 'ملخص';
+    else if (generationType === 'visual') title = 'وثيقة تفاعلية';
     else if (generationType.startsWith('cutout')) title = 'قصاصات';
     
     const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.doc`;
@@ -696,6 +715,18 @@ export default function GeneratorPage() {
                 )}
               </button>
               
+              <button 
+                onClick={() => expertChatEmitter.dispatchEvent(new Event('open'))}
+                className="relative p-1 md:p-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-600/20 hover:from-amber-500/40 hover:to-yellow-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group overflow-hidden"
+                title="الخبير التربوي دالي"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="w-full h-full rounded-md overflow-hidden flex items-center justify-center">
+                  <img src="/icon.png" alt="Expert" className="w-full h-full object-cover" />
+                </div>
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#1a1a1a] rounded-full"></span>
+              </button>
+
               <button 
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 className="p-1 md:p-1.5 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center w-9 h-9 md:w-10 md:h-10"
@@ -998,6 +1029,7 @@ export default function GeneratorPage() {
                 { id: 'test', icon: FileSpreadsheet, label: 'اختبار/فرض', bg: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400', shadowColor: 'rgba(244, 63, 94, 0.5)' },
                 { id: 'series', icon: ListTodo, label: 'سلسلة تمارين', bg: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', shadowColor: 'rgba(16, 185, 129, 0.5)' },
                 { id: 'summary', icon: Layers, label: 'ملخص', bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', shadowColor: 'rgba(245, 158, 11, 0.5)' },
+                { id: 'visual', icon: ImageIcon, label: 'مذكرة بالصور', bg: 'bg-fuchsia-500', text: 'text-fuchsia-600 dark:text-fuchsia-400', shadowColor: 'rgba(217, 70, 239, 0.5)' },
               ].map(tab => (
                 <button 
                   key={tab.id}
@@ -1071,7 +1103,7 @@ export default function GeneratorPage() {
             </div>
 
             {/* Dynamic Inputs based on type */}
-            {(generationType === 'memo' || generationType === 'summary' || generationType.startsWith('cutout')) ? (
+            {(generationType === 'memo' || generationType === 'summary' || generationType === 'visual' || generationType.startsWith('cutout')) ? (
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
                   <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider">المقطع</label>
