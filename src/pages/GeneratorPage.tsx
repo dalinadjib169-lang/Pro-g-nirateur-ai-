@@ -33,6 +33,9 @@ export default function GeneratorPage() {
   const [isDownloadsModalOpen, setIsDownloadsModalOpen] = useState(false);
 
   const [darkMode, setDarkMode] = useState(false);
+  const [appBgImage, setAppBgImage] = useState<string | null>(null);
+  const [appBgColor, setAppBgColor] = useState<string>('');
+  const bgInputRef = useRef<HTMLInputElement>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [dhikrState, setDhikrState] = useState<{ tabId: string, text: string, timestamp: number } | null>(null);
   const [teacherInfo, setTeacherInfo] = useState<TeacherInfo>({
@@ -153,6 +156,32 @@ export default function GeneratorPage() {
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [darkMode]);
+
+  useEffect(() => {
+    const savedBgImage = localStorage.getItem('appBgImage');
+    const savedBgColor = localStorage.getItem('appBgColor');
+    if (savedBgImage) setAppBgImage(savedBgImage);
+    if (savedBgColor) setAppBgColor(savedBgColor);
+  }, []);
+
+  const handleAppBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setAppBgImage(result);
+        localStorage.setItem('appBgImage', result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAppBgColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const color = e.target.value;
+    setAppBgColor(color);
+    localStorage.setItem('appBgColor', color);
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('generateProData');
@@ -578,7 +607,16 @@ export default function GeneratorPage() {
   ];
 
   return (
-    <div className="min-h-screen transition-colors duration-300 relative">
+    <div 
+      className="min-h-screen transition-colors duration-300 relative"
+      style={{
+        backgroundColor: appBgColor || undefined,
+        backgroundImage: appBgImage ? `url(${appBgImage})` : undefined,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       {/* Light Strip Animation at the top */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70 z-50 overflow-hidden no-print">
         <div className="w-full h-full bg-white/50 animate-light-strip"></div>
@@ -597,7 +635,7 @@ export default function GeneratorPage() {
       </div>
 
       {/* Header */}
-      <header className="bg-[#111] border-b border-amber-900/50 shadow-[0_2px_15px_rgba(212,175,55,0.1)] p-2 md:p-3 no-print sticky top-0 z-40 transition-colors duration-300">
+      <header className="bg-black/80 backdrop-blur-md border-b border-amber-900/50 shadow-[0_2px_15px_rgba(212,175,55,0.1)] py-3 px-2 md:py-4 md:px-4 no-print sticky top-0 z-40 transition-colors duration-300">
         <div className="container mx-auto flex flex-row justify-between items-center gap-2">
           {/* Logo Section */}
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
@@ -609,7 +647,7 @@ export default function GeneratorPage() {
               </div>
             </div>
             <div className="flex flex-col shrink-0 truncate">
-              <h1 className="text-lg md:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate" dir="ltr">
+              <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate" dir="ltr">
                 PRO GÉNIRATEUR AI
               </h1>
               <p className="text-[9px] md:text-xs text-amber-500/80 font-bold mt-1 tracking-wide truncate">المساعد الذكي للأستاذ</p>
@@ -658,6 +696,26 @@ export default function GeneratorPage() {
             >
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
+
+            <input type="file" ref={bgInputRef} onChange={handleAppBgUpload} className="hidden" accept="image/*" />
+            <button 
+              onClick={() => bgInputRef.current?.click()}
+              className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
+              title="تغيير صورة الخلفية"
+            >
+              <ImagePlus size={18} />
+            </button>
+            <div className="relative group flex items-center justify-center">
+               <button className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors" title="تغيير لون الخلفية">
+                 <Palette size={18} />
+               </button>
+               <input 
+                 type="color" 
+                 value={appBgColor || '#f8f9fa'}
+                 onChange={handleAppBgColorChange} 
+                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+               />
+            </div>
             
             <div className="flex items-center gap-1.5 md:gap-2 border-r border-amber-900/50 pr-2 md:pr-3 ml-1">
               <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
@@ -677,7 +735,7 @@ export default function GeneratorPage() {
               <span className="text-xs md:text-sm font-semibold text-amber-200 hidden md:block max-w-[100px] truncate mr-1">
                 {userData?.firstName}
               </span>
-              {(userData?.role === 'admin' || userData?.email === 'dalinadjib1990@gmail.com' || userData?.email?.includes('0771167330') || userData?.phone?.includes('0771167330') || userData?.firstName === 'متصل') && (
+              {userData && (
                 <button onClick={() => navigate('/admin')} className="p-1.5 md:p-2 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30" title="لوحة التحكم">
                   <Shield size={18} />
                 </button>
