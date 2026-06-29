@@ -68,6 +68,12 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
     try {
       setDownloadingId(file.id);
 
+      if (isAndroidWebView) {
+         alert("يرجى تنزيل الملف أولاً، ثم مشاركته من مجلد التنزيلات الخاص بك.");
+         setDownloadingId(null);
+         return;
+      }
+
       // 1. Try Native Web Share API first
       if (navigator.share && navigator.canShare) {
         const shareFile = new File([file.blob], file.name, { 
