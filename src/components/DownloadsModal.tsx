@@ -12,6 +12,7 @@ interface DownloadsModalProps {
 export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps) {
   const { files, deleteFile, markAsRead } = useDownloads();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [readyDownload, setReadyDownload] = useState<{url: string, name: string} | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -44,15 +45,9 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
       if (isAndroidWebView) {
         const url = await getFirebaseUrl(file);
         if (url) {
-          // Navigating in the same window causes AppCreator24 to crash.
-          // We use target="_blank" so the WebView delegates it to the native Download Manager or external browser.
-          const a = document.createElement('a');
-          a.href = url;
-          a.target = '_blank';
-          a.download = file.name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          // Show a UI button for the user to physically click, because auto-clicks 
+          // and JS navigation often fail or crash in AppCreator24.
+          setReadyDownload({ url, name: file.name });
           setDownloadingId(null);
           return;
         } else {
@@ -60,12 +55,11 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
           const reader = new FileReader();
           reader.onloadend = () => {
             const dataUrl = reader.result as string;
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = file.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            setReadyDownload({ url: dataUrl, name: file.name });
+            setDownloadingId(null);
+          };
+          reader.onerror = () => {
+            alert("حدث خطأ أثناء قراءة الملف.");
             setDownloadingId(null);
           };
           reader.readAsDataURL(file.blob);
@@ -255,6 +249,39 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
           )}
         </div>
       </div>
+
+      {/* Manual Download Overlay for WebViews */}
+      {readyDownload && (
+        <div className="absolute inset-0 bg-[#0a0a0a]/90 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-[#1a1a1a] border border-amber-900/50 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Download size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-amber-50 mb-2">الملف جاهز للتنزيل</h3>
+            <p className="text-amber-500/80 text-sm mb-6 leading-relaxed">
+              انقر على الزر أدناه لتنزيل الملف أو فتحه.
+            </p>
+            <div className="flex flex-col gap-3">
+              <a 
+                href={readyDownload.url}
+                target="_blank"
+                download={readyDownload.name}
+                className="w-full py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-colors flex items-center justify-center gap-2"
+                onClick={() => setReadyDownload(null)}
+              >
+                <Download size={20} />
+                تنزيل الآن
+              </a>
+              <button 
+                onClick={() => setReadyDownload(null)}
+                className="w-full py-3 bg-transparent border border-amber-900/50 text-amber-500 font-bold rounded-xl hover:bg-amber-900/20 transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
