@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useDownloads, DownloadedFile } from '../contexts/DownloadsContext';
 import { X, FileText, FileBadge, Trash2, Share2, Download, Loader2 } from 'lucide-react';
+import { storage } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface DownloadsModalProps {
   isOpen: boolean;
@@ -21,29 +23,47 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
 
   const isAndroidWebView = /Android.*(wv|\.b|Version\/[0-9]|Build\/)/i.test(navigator.userAgent) || /AppCreator24/i.test(navigator.userAgent);
 
+  const getFirebaseUrl = async (file: DownloadedFile) => {
+    try {
+      const storageRef = ref(storage, `shared_files/${file.id}_${file.name}`);
+      await uploadBytes(storageRef, file.blob);
+      const url = await getDownloadURL(storageRef);
+      return url;
+    } catch (e) {
+      console.error("Firebase upload failed:", e);
+      return null;
+    }
+  };
+
   const handleDownload = async (file: DownloadedFile) => {
     try {
       setDownloadingId(file.id);
 
-      // We will try using Data URIs for WebView, because form POST loses the body in Android DownloadManager
+      // In Android WebView, Blob/Data URLs crash or do nothing. 
+      // We must provide a real HTTPS URL for the native DownloadManager.
       if (isAndroidWebView) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const dataUrl = reader.result as string;
-          const a = document.createElement('a');
-          a.href = dataUrl;
-          a.download = file.name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+        const url = await getFirebaseUrl(file);
+        if (url) {
+          // Navigating to the HTTPS URL triggers the native Android DownloadManager
+          window.location.href = url;
           setDownloadingId(null);
-        };
-        reader.onerror = () => {
-          alert("حدث خطأ أثناء تحميل الملف.");
-          setDownloadingId(null);
-        };
-        reader.readAsDataURL(file.blob);
-        return;
+          return;
+        } else {
+          // Fallback if Firebase fails
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setDownloadingId(null);
+          };
+          reader.readAsDataURL(file.blob);
+          return;
+        }
       }
 
       // --- Standard Browsers Handling (Download only) ---
@@ -68,39 +88,62 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
     try {
       setDownloadingId(file.id);
 
+      let shareUrl = "";
       if (isAndroidWebView) {
-         alert("يرجى تنزيل الملف أولاً، ثم مشاركته من مجلد التنزيلات الخاص بك.");
-         setDownloadingId(null);
-         return;
+        // We can't share Blobs in WebView, so we upload to get a real URL
+        const uploadedUrl = await getFirebaseUrl(file);
+        if (uploadedUrl) {
+           shareUrl = uploadedUrl;
+        } else {
+           alert("يرجى تنزيل الملف أولاً، ثم مشاركته من مجلد التنزيلات الخاص بك.");
+           setDownloadingId(null);
+           return;
+        }
       }
 
       // 1. Try Native Web Share API first
       if (navigator.share && navigator.canShare) {
-        const shareFile = new File([file.blob], file.name, { 
-          type: file.type === 'pdf' ? 'application/pdf' : 'application/msword' 
-        });
-        
-        if (navigator.canShare({ files: [shareFile] })) {
-          try {
+        try {
+          if (isAndroidWebView && shareUrl) {
+            // Share the URL directly
             await navigator.share({
-              files: [shareFile],
               title: file.name,
+              url: shareUrl
             });
             setDownloadingId(null);
-            return; 
-          } catch (shareError: any) {
-            if (shareError.name !== 'AbortError') {
-              console.log("Native share failed, falling back...");
-            } else {
-               setDownloadingId(null);
-               return; 
+            return;
+          } else {
+            // Standard browser: Share the file
+            const shareFile = new File([file.blob], file.name, { 
+              type: file.type === 'pdf' ? 'application/pdf' : 'application/msword' 
+            });
+            if (navigator.canShare({ files: [shareFile] })) {
+              await navigator.share({
+                files: [shareFile],
+                title: file.name,
+              });
+              setDownloadingId(null);
+              return; 
             }
+          }
+        } catch (shareError: any) {
+          if (shareError.name !== 'AbortError') {
+            console.log("Native share failed, falling back...");
+          } else {
+             setDownloadingId(null);
+             return; 
           }
         }
       }
 
+      if (isAndroidWebView) {
+        // If navigator.share fails in WebView and we have a URL, just open it
+        if (shareUrl) window.location.href = shareUrl;
+        setDownloadingId(null);
+        return;
+      }
+
       // 2. Fallback for standard browsers: Open via Blob URL in new tab
-      // For WebView, this might not work perfectly, but we let it try
       const objectUrl = URL.createObjectURL(file.blob);
       const a = document.createElement('a');
       a.href = objectUrl;
