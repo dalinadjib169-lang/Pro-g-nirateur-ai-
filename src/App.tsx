@@ -79,6 +79,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   return <>{children}</>;
 };
 
+import { CompleteProfileModal } from './components/CompleteProfileModal';
 import { ExpertChat } from './components/ExpertChat';
 
 // Add export event emitter for expert chat
@@ -117,6 +118,7 @@ function AppRoutes() {
       </Routes>
       <TeachersRoom />
       <ExpertChat isOpen={isExpertChatOpen} onClose={() => setIsExpertChatOpen(false)} />
+      <CompleteProfileModal />
     </>
   );
 }

@@ -1,0 +1,81 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+
+export const CompleteProfileModal: React.FC = () => {
+  const { userData, refreshUserData } = useAuth();
+  const [stateName, setStateName] = useState(userData?.state || '');
+  const [phase, setPhase] = useState(userData?.phase || '');
+  const [subject, setSubject] = useState((userData as any)?.subject || '');
+  const [loading, setLoading] = useState(false);
+
+  // If user has state and phase, we don't show the modal
+  const needsCompletion = userData && (!userData.state || !userData.phase);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userData) return;
+    setLoading(true);
+    try {
+      await updateDoc(doc(db, 'users', userData.uid), {
+        state: stateName,
+        phase,
+        subject
+      });
+      await refreshUserData();
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء الحفظ');
+    }
+    setLoading(false);
+  };
+
+  if (!needsCompletion) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-100 dark:border-slate-700"
+      >
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">إكمال الملف الشخصي</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">يرجى استكمال بياناتك للظهور في قاعة الأساتذة بشكل صحيح</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">الولاية</label>
+            <select required value={stateName} onChange={e => setStateName(e.target.value)} className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="">اختر الولاية</option>
+              {['أدرار', 'الشلف', 'الأغواط', 'أم البواقي', 'باتنة', 'بجاية', 'بسكرة', 'بشار', 'البليدة', 'البويرة', 'تمنراست', 'تبسة', 'تلمسان', 'تيارت', 'تيزي وزو', 'الجزائر', 'الجلفة', 'جيجل', 'سطيف', 'سعيدة', 'سكيكدة', 'سيدي بلعباس', 'عنابة', 'قالمة', 'قسنطينة', 'المدية', 'مستغانم', 'المسيلة', 'معسكر', 'ورقلة', 'وهران', 'البيض', 'إليزي', 'برج بوعريريج', 'بومرداس', 'الطارف', 'تندوف', 'تيسمسيلت', 'الوادي', 'خنشلة', 'سوق أهراس', 'تيبازة', 'ميلة', 'عين الدفلى', 'النعامة', 'عين تموشنت', 'غرداية', 'غليزان', 'تيميمون', 'برج باجي مختار', 'أولاد جلال', 'بني عباس', 'إن صالح', 'إن قزام', 'تقرت', 'جانت', 'المغير', 'المنيعة'].map((w, i) => (
+                <option key={i} value={`${i + 1}- ${w}`}>{i + 1}- {w}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">الطور</label>
+            <select required value={phase} onChange={e => setPhase(e.target.value)} className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="">اختر الطور</option>
+              <option value="ابتدائي">ابتدائي</option>
+              <option value="متوسط">متوسط</option>
+              <option value="ثانوي">ثانوي</option>
+              <option value="جامعي">جامعي</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">مادة التدريس</label>
+            <input type="text" required value={subject} onChange={e => setSubject(e.target.value)} className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: رياضيات، لغة عربية..." />
+          </div>
+
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 rounded-xl font-bold flex justify-center items-center hover:opacity-90 transition-opacity disabled:opacity-50 mt-6">
+            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "حفظ المتابعة"}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+};

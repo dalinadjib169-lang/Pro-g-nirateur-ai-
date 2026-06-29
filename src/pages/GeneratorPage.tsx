@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Image as ImageIcon } from 'lucide-react';
+import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Image as ImageIcon } from 'lucide-react';
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
@@ -717,14 +717,12 @@ export default function GeneratorPage() {
               
               <button 
                 onClick={() => expertChatEmitter.dispatchEvent(new Event('open'))}
-                className="relative p-1 md:p-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-600/20 hover:from-amber-500/40 hover:to-yellow-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group overflow-hidden"
-                title="الخبير التربوي دالي"
+                className="relative p-1 md:p-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 hover:from-amber-500/40 hover:to-orange-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                title="الخبير التربوي"
               >
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="w-full h-full rounded-md overflow-hidden flex items-center justify-center">
-                  <img src="/icon.png" alt="Expert" className="w-full h-full object-cover" />
-                </div>
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#1a1a1a] rounded-full"></span>
+                <Bot size={22} className="group-hover:scale-110 transition-transform" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
               </button>
 
               <button 

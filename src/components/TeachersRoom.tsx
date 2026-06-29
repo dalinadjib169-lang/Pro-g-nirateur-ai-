@@ -100,64 +100,65 @@ export const TeachersRoom: React.FC = () => {
   useEffect(() => {
     if (!isOpen || !userData) return;
 
-    const fetchTeachers = async () => {
-      try {
-        const q = query(collection(db, 'users'));
-        const querySnapshot = await getDocs(q);
-        const fetchedTeachers: Teacher[] = [];
-        querySnapshot.forEach((doc) => {
-          if (doc.id !== userData.uid) {
-            fetchedTeachers.push({ uid: doc.id, ...doc.data() } as Teacher);
-          }
-        });
-
-        // Add developer if not present, for demo
-        const devExists = fetchedTeachers.find(t => t.email === 'dalinadjib1990@gmail.com');
-        if (!devExists) {
-          fetchedTeachers.push({
-            uid: 'dev_dali_nadjib',
-            firstName: 'دالي',
-            lastName: 'نجيب',
-            email: 'dalinadjib1990@gmail.com',
-            wilaya: 'الجزائر',
-            phase: 'الجميع',
-            subject: 'المطور',
-            isOnline: true,
-            profilePic: '/icon.png'
-          });
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedTeachers: Teacher[] = [];
+      querySnapshot.forEach((doc) => {
+        if (doc.id !== userData.uid) {
+          fetchedTeachers.push({ uid: doc.id, ...doc.data() } as Teacher);
         }
+      });
 
-        // Sorting:
-        // 1. Developer first
-        // 2. Same wilaya
-        // 3. Same phase
-        // 4. Same subject
-        // 5. Random
-        fetchedTeachers.sort((a, b) => {
-          if (a.email === 'dalinadjib1990@gmail.com') return -1;
-          if (b.email === 'dalinadjib1990@gmail.com') return 1;
-          
-          let scoreA = 0;
-          let scoreB = 0;
-          if (a.wilaya === userData.wilaya) scoreA += 3;
-          if (a.phase === userData.phase) scoreA += 2;
-          if (a.subject === userData.subject) scoreA += 1;
-          
-          if (b.wilaya === userData.wilaya) scoreB += 3;
-          if (b.phase === userData.phase) scoreB += 2;
-          if (b.subject === userData.subject) scoreB += 1;
-          
-          if (scoreA !== scoreB) return scoreB - scoreA;
-          return Math.random() - 0.5;
+      // Add developer if not present, for demo
+      const devExists = fetchedTeachers.find(t => t.email === 'dalinadjib1990@gmail.com');
+      if (!devExists) {
+        fetchedTeachers.push({
+          uid: 'dev_dali_nadjib',
+          firstName: 'دالي',
+          lastName: 'نجيب',
+          email: 'dalinadjib1990@gmail.com',
+          wilaya: 'الجزائر',
+          phase: 'الجميع',
+          subject: 'المطور',
+          isOnline: true,
+          profilePic: '/icon.png'
         });
-
-        setTeachers(fetchedTeachers);
-      } catch (error) {
-        console.error("Error fetching teachers", error);
       }
-    };
 
-    fetchTeachers();
+      // Sorting:
+      // 1. Developer first
+      // 2. Same wilaya (state)
+      // 3. Same phase
+      // 4. Same subject
+      // 5. Random
+      fetchedTeachers.sort((a, b) => {
+        if (a.email === 'dalinadjib1990@gmail.com') return -1;
+        if (b.email === 'dalinadjib1990@gmail.com') return 1;
+        
+        let scoreA = 0;
+        let scoreB = 0;
+        const userState = userData.state || (userData as any).wilaya;
+        const aState = (a as any).state || a.wilaya;
+        const bState = (b as any).state || b.wilaya;
+
+        if (aState === userState) scoreA += 3;
+        if (a.phase === userData.phase) scoreA += 2;
+        if (a.subject === (userData as any).subject) scoreA += 1;
+        
+        if (bState === userState) scoreB += 3;
+        if (b.phase === userData.phase) scoreB += 2;
+        if (b.subject === (userData as any).subject) scoreB += 1;
+        
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return Math.random() - 0.5; // Randomize the rest
+      });
+
+      setTeachers(fetchedTeachers);
+    }, (error) => {
+      console.error("Error fetching teachers", error);
+    });
+
+    return () => unsubscribe();
   }, [isOpen, userData]);
 
   // Listen to chat sessions
@@ -358,7 +359,7 @@ export const TeachersRoom: React.FC = () => {
                 <div>
                   <h3 className="font-bold text-sm leading-tight">{userData.firstName} {userData.lastName}</h3>
                   <div className="flex items-center gap-2 text-[10px] text-indigo-100 mt-1 opacity-90">
-                    <span className="flex items-center gap-0.5"><MapPin size={10} /> {userData.wilaya || 'الولاية'}</span>
+                    <span className="flex items-center gap-0.5"><MapPin size={10} /> {(userData as any).state || (userData as any).wilaya || 'الولاية'}</span>
                     <span className="flex items-center gap-0.5"><GraduationCap size={10} /> {userData.phase || 'الطور'}</span>
                     <span className="flex items-center gap-0.5"><BookOpen size={10} /> {userData.subject || 'الاختصاص'}</span>
                   </div>
@@ -444,7 +445,7 @@ export const TeachersRoom: React.FC = () => {
                             </h5>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                            {teacher.wilaya && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><MapPin size={8} /> {teacher.wilaya}</span>}
+                            {((teacher as any).state || teacher.wilaya) && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><MapPin size={8} /> {(teacher as any).state || teacher.wilaya}</span>}
                             {teacher.phase && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><GraduationCap size={8} /> {teacher.phase}</span>}
                             {teacher.subject && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><BookOpen size={8} /> {teacher.subject}</span>}
                           </div>

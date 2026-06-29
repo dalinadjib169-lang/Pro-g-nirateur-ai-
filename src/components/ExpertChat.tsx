@@ -93,8 +93,8 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
             <div className="flex items-center gap-3 relative z-10">
               <div className="relative">
                 <div className="absolute -inset-1 bg-gradient-to-r from-yellow-300 to-amber-300 rounded-full blur-sm opacity-80 animate-pulse"></div>
-                <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white relative overflow-hidden flex items-center justify-center">
-                  <img src="/icon.png" alt="Expert" className="w-full h-full object-cover" />
+                <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-amber-300 relative overflow-hidden flex items-center justify-center text-amber-400">
+                  <Bot size={20} />
                 </div>
               </div>
               <div>
@@ -129,20 +129,29 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                   const isUser = msg.role === 'user';
                   return (
                     <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                      {!isUser && (
-                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 overflow-hidden flex-shrink-0 ml-2 mt-1 border border-amber-200 dark:border-amber-800">
-                          <img src="/icon.png" alt="Expert" className="w-full h-full object-cover" />
+                      {!isUser ? (
+                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center text-amber-600 flex-shrink-0 ml-2 mt-1 border border-amber-200 dark:border-amber-800 shadow-sm">
+                          <Bot size={16} />
                         </div>
-                      )}
+                      ) : null}
                       <div 
                         className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
                           isUser 
-                            ? 'bg-amber-600 text-white rounded-tr-none' 
-                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700 rounded-tl-none'
+                            ? 'bg-amber-600 text-white rounded-tl-none' 
+                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700 rounded-tr-none'
                         }`}
                       >
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       </div>
+                      {isUser ? (
+                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 overflow-hidden flex-shrink-0 mr-2 mt-1 border border-slate-300 dark:border-slate-600 shadow-sm">
+                          {userData?.profilePic ? (
+                            <img src={userData.profilePic} alt="User" className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={16} />
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
