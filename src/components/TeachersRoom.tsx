@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles, Settings } from 'lucide-react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles, Settings, ImagePlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
@@ -90,12 +90,51 @@ export const TeachersRoom: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [activeChat, setActiveChat] = useState<Teacher | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [roomBanner, setRoomBanner] = useState<string | null>(null);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch room banner
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().roomBanner) {
+        setRoomBanner(docSnap.data().roomBanner);
+      }
+    });
+    return () => unsub();
+  }, [isOpen]);
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBanner(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'ml_default');
+      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.secure_url) {
+        await setDoc(doc(db, 'settings', 'general'), { roomBanner: data.secure_url }, { merge: true });
+      }
+    } catch (err) {
+      console.error(err);
+      alert('فشل رفع صورة القاعة');
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
 
   // Fetch teachers
   useEffect(() => {
@@ -162,60 +201,73 @@ export const TeachersRoom: React.FC = () => {
     return () => unsubscribe();
   }, [isOpen, userData]);
 
-  // Listen to chat sessions
+  // Listen to all chat sessions to show notifications
   useEffect(() => {
     if (!isOpen || !userData) return;
     
     const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid));
     const q2 = query(collection(db, 'chat_sessions'), where('user2Id', '==', userData.uid));
     
-    // In a real app we'd combine or listen to both. For simplicity, we just listen when activeChat is selected.
+    let sessions1: ChatSession[] = [];
+    let sessions2: ChatSession[] = [];
+
+    const updateAllSessions = () => {
+      const combined = [...sessions1, ...sessions2];
+      // remove duplicates just in case (shouldn't happen but safe)
+      const uniqueSessions = combined.filter((s, index, self) => 
+        index === self.findIndex((t) => t.id === s.id)
+      );
+      setAllSessions(uniqueSessions);
+    };
+
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+      sessions1 = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
+      updateAllSessions();
+    });
+
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+      sessions2 = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
+      updateAllSessions();
+    });
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [isOpen, userData]);
 
   useEffect(() => {
-    if (!activeChat || !userData) return;
+    if (!activeChat || !userData) {
+      setChatSession(null);
+      setMessages([]);
+      return;
+    }
 
-    const checkSession = async () => {
-      // Find session where (user1 == me AND user2 == active) OR (user1 == active AND user2 == me)
-      // Since Firestore doesn't support OR well without composite indexes, we check both
-      const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid), where('user2Id', '==', activeChat.uid));
-      const q2 = query(collection(db, 'chat_sessions'), where('user1Id', '==', activeChat.uid), where('user2Id', '==', userData.uid));
-      
-      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-      
-      let sessionDoc = snap1.empty ? (snap2.empty ? null : snap2.docs[0]) : snap1.docs[0];
-      
-      if (!sessionDoc) {
-        setChatSession(null);
-      } else {
-        setChatSession({ id: sessionDoc.id, ...sessionDoc.data() } as ChatSession);
-        
-        // Listen to session changes
-        const unsubSession = onSnapshot(doc(db, 'chat_sessions', sessionDoc.id), (d) => {
-          if (d.exists()) {
-            setChatSession({ id: d.id, ...d.data() } as ChatSession);
-          }
-        });
-        
-        // Listen to messages
-        const messagesRef = collection(db, 'chat_sessions', sessionDoc.id, 'messages');
-        const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
-        const unsubMessages = onSnapshot(qMsg, (snapshot) => {
-          const msgs: Message[] = [];
-          snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
-          setMessages(msgs);
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-        });
-        
-        return () => {
-          unsubSession();
-          unsubMessages();
-        };
-      }
-    };
+    const session = allSessions.find(s => 
+      (s.user1Id === userData.uid && s.user2Id === activeChat.uid) ||
+      (s.user1Id === activeChat.uid && s.user2Id === userData.uid)
+    );
+
+    if (!session) {
+      setChatSession(null);
+      setMessages([]);
+      return;
+    }
+
+    setChatSession(session);
+
+    // Listen to messages
+    const messagesRef = collection(db, 'chat_sessions', session.id, 'messages');
+    const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
+    const unsubMessages = onSnapshot(qMsg, (snapshot) => {
+      const msgs: Message[] = [];
+      snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
+      setMessages(msgs);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    });
     
-    checkSession();
-  }, [activeChat, userData]);
+    return () => unsubMessages();
+  }, [activeChat, userData, allSessions]);
 
   const startChat = async () => {
     if (!userData || !activeChat) return;
@@ -381,6 +433,42 @@ export const TeachersRoom: React.FC = () => {
               {!activeChat ? (
                 // Teachers List
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+                  {/* Room Banner */}
+                  {(roomBanner || (userData?.email === 'dalinadjib1990@gmail.com' || userData?.role === 'admin')) && (
+                    <div className="mb-4 relative rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 h-32 group">
+                      {roomBanner ? (
+                        <img src={roomBanner} alt="تجمع الأساتذة" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-bold">
+                          صورة قاعة الأساتذة العامة
+                        </div>
+                      )}
+                      
+                      {/* Banner overlay gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                      <div className="absolute bottom-3 right-3 text-white font-bold text-sm">
+                        قاعة الأساتذة العامة
+                      </div>
+
+                      {(userData?.email === 'dalinadjib1990@gmail.com' || userData?.role === 'admin') && (
+                        <>
+                          <input type="file" ref={bannerInputRef} onChange={handleBannerUpload} className="hidden" accept="image/*" />
+                          <button 
+                            onClick={() => bannerInputRef.current?.click()}
+                            disabled={isUploadingBanner}
+                            className="absolute top-2 left-2 bg-white/20 hover:bg-white/40 backdrop-blur text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs"
+                          >
+                            {isUploadingBanner ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <ImagePlus size={14} />
+                            )}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <div className="relative">
                       <input 
@@ -401,7 +489,11 @@ export const TeachersRoom: React.FC = () => {
                     >
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-500 shadow-lg shadow-amber-500/20 flex items-center justify-center bg-slate-800">
-                          <img src="/icon.png" alt="الخبير التربوي" className="w-full h-full object-cover" />
+                          {userData?.expertAvatar || localStorage.getItem('expertAvatar') ? (
+                            <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="الخبير التربوي" className="w-full h-full object-cover" />
+                          ) : (
+                            <img src="/icon.png" alt="الخبير التربوي" className="w-full h-full object-cover" />
+                          )}
                         </div>
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800 z-10"></div>
                       </div>
@@ -422,12 +514,30 @@ export const TeachersRoom: React.FC = () => {
                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 px-1 uppercase tracking-wider">الأساتذة المتاحين</h4>
                   
                   <div className="space-y-2">
-                    {teachers.map(teacher => (
+                    {teachers.map(teacher => {
+                      const session = allSessions.find(s => 
+                        (s.user1Id === userData?.uid && s.user2Id === teacher.uid) ||
+                        (s.user1Id === teacher.uid && s.user2Id === userData?.uid)
+                      );
+                      const hasPendingRequest = session?.status === 'pending' && session.initiatorId === teacher.uid;
+                      const hasActiveChat = session?.status === 'accepted';
+
+                      return (
                       <button 
                         key={teacher.uid}
                         onClick={() => setActiveChat(teacher)}
-                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl border border-slate-100 dark:border-slate-700/50 transition-all text-right group"
+                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl border border-slate-100 dark:border-slate-700/50 transition-all text-right group relative"
                       >
+                        {hasPendingRequest && (
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-bounce shadow-sm">
+                            طلب جديد
+                          </div>
+                        )}
+                        {hasActiveChat && !hasPendingRequest && (
+                          <div className="absolute top-2 left-2 bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                            محادثة نشطة
+                          </div>
+                        )}
                         <div className="relative">
                           <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${teacher.email === 'dalinadjib1990@gmail.com' ? 'border-amber-500' : 'border-indigo-100 dark:border-indigo-900'}`}>
                             {teacher.profilePic ? (
@@ -457,7 +567,7 @@ export const TeachersRoom: React.FC = () => {
                           </div>
                         </div>
                       </button>
-                    ))}
+                    )})}
                     
                     {teachers.length === 0 && (
                       <div className="text-center py-10 text-slate-500 text-sm">لا يوجد أساتذة متصلين حالياً.</div>

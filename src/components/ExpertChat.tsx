@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface Message {
   id: string;
@@ -10,7 +12,7 @@ interface Message {
 }
 
 export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { userData } = useAuth();
+  const { userData, refreshUserData } = useAuth();
   
   // Greeting message based on user requirements
   const greetingText = `مرحبا زميلي الأستاذ مع الخبير التربوي دالي. وحد الله وصلّ على محمد، وسيجيبك الأستاذ دالي نجيب على كل أسئلتك التربوية والبيداغوجية وكل ما يخص مسارك المهني.`;
@@ -20,26 +22,50 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [expertAvatar, setExpertAvatar] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedAvatar = localStorage.getItem('expertAvatar');
-    if (savedAvatar) setExpertAvatar(savedAvatar);
-  }, []);
+    if (userData?.expertAvatar) {
+      setExpertAvatar(userData.expertAvatar);
+    } else {
+      const savedAvatar = localStorage.getItem('expertAvatar');
+      if (savedAvatar) setExpertAvatar(savedAvatar);
+    }
+  }, [userData]);
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setExpertAvatar(base64String);
-        localStorage.setItem('expertAvatar', base64String);
-      };
-      reader.readAsDataURL(file);
+    if (file && userData) {
+      setIsUploadingAvatar(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'ml_default');
+
+        const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        
+        if (data.secure_url) {
+          await updateDoc(doc(db, 'users', userData.uid), {
+            expertAvatar: data.secure_url
+          });
+          setExpertAvatar(data.secure_url);
+          localStorage.setItem('expertAvatar', data.secure_url);
+          refreshUserData();
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('حدث خطأ أثناء رفع الصورة');
+      } finally {
+        setIsUploadingAvatar(false);
+      }
     }
   };
 
@@ -116,14 +142,18 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                 <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
                 <div className="absolute -inset-1 bg-gradient-to-r from-yellow-300 to-amber-300 rounded-full blur-sm opacity-80 animate-pulse group-hover:opacity-100 transition-opacity"></div>
                 <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-amber-300 relative overflow-hidden flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform" title="تغيير صورة الخبير">
-                  {expertAvatar ? (
+                  {isUploadingAvatar ? (
+                    <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                  ) : expertAvatar ? (
                     <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" />
                   ) : (
                     <Bot size={20} />
                   )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <User size={14} className="text-white" />
-                  </div>
+                  {!isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <User size={14} className="text-white" />
+                    </div>
+                  )}
                 </div>
               </div>
               <div>

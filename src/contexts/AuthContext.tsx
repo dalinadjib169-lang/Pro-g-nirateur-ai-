@@ -19,6 +19,7 @@ export interface UserData {
   generationsRemaining: number;
   totalGenerations: number;
   profilePic?: string;
+  expertAvatar?: string;
   isActive: boolean;
   createdAt: number;
 }

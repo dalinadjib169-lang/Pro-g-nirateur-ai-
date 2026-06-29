@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Settings, Image as ImageIcon } from 'lucide-react';
+import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Settings, Image as ImageIcon, X } from 'lucide-react';
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
@@ -83,6 +83,7 @@ export default function GeneratorPage() {
   
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [generatingDhikr, setGeneratingDhikr] = useState('');
 
   useEffect(() => {
@@ -107,6 +108,7 @@ export default function GeneratorPage() {
   const [docColor, setDocColor] = useState('#1e40af');
   const [documentLanguage, setDocumentLanguage] = useState('ar');
   const [includeWatermark, setIncludeWatermark] = useState(false);
+  const [includeImages, setIncludeImages] = useState(false);
 
   // Scaling logic
   const containerRef = useRef<HTMLDivElement>(null);
@@ -203,6 +205,7 @@ export default function GeneratorPage() {
         if (parsed.memoContent) setMemoContent(parsed.memoContent);
         if (parsed.documentLanguage) setDocumentLanguage(parsed.documentLanguage);
         if (parsed.includeWatermark !== undefined) setIncludeWatermark(parsed.includeWatermark);
+        if (parsed.includeImages !== undefined) setIncludeImages(parsed.includeImages);
         if (parsed.hasIntegration !== undefined) setHasIntegration(parsed.hasIntegration);
         if (parsed.contentStyle) setContentStyle(parsed.contentStyle);
         if (parsed.designStyle) setDesignStyle(parsed.designStyle);
@@ -224,6 +227,7 @@ export default function GeneratorPage() {
       memoContent,
       documentLanguage,
       includeWatermark,
+      includeImages,
       hasIntegration,
       contentStyle,
       designStyle,
@@ -284,50 +288,51 @@ export default function GeneratorPage() {
   };
 
   const profileInputRef = useRef<HTMLInputElement>(null);
-  const handleProfileImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && userData) {
       setSelectedProfileImage(file);
       setProfileImagePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleProfileSave = async () => {
-    if (!selectedProfileImage || !userData) return;
-    setIsUploadingProfile(true);
-    setUploadProgress(10);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedProfileImage);
-      formData.append('upload_preset', 'ml_default');
       
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 500);
+      setIsUploadingProfile(true);
+      setUploadProgress(10);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'ml_default');
+        
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => Math.min(prev + 10, 90));
+        }, 500);
 
-      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      if(data.secure_url) {
-        await updateDoc(doc(db, 'users', userData.uid), {
-          profilePic: data.secure_url
+        const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
+          method: 'POST',
+          body: formData
         });
-        refreshUserData();
+        const data = await response.json();
+        
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+
+        if(data.secure_url) {
+          await updateDoc(doc(db, 'users', userData.uid), {
+            profilePic: data.secure_url
+          });
+          refreshUserData();
+          setTimeout(() => {
+            setSelectedProfileImage(null);
+            setProfileImagePreview(null);
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('حدث خطأ أثناء رفع الصورة');
         setSelectedProfileImage(null);
         setProfileImagePreview(null);
+      } finally {
+        setIsUploadingProfile(false);
+        setUploadProgress(0);
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('حدث خطأ أثناء رفع الصورة');
-    } finally {
-      setIsUploadingProfile(false);
-      setUploadProgress(0);
     }
   };
 
@@ -350,6 +355,12 @@ export default function GeneratorPage() {
       alert('عذراً، لقد استنفدت عدد التوليدات المتاحة لك. الرجاء التواصل مع الإدارة لتجديد الاشتراك.');
       return;
     }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     if (soundEnabled) soundManager.playGenerateStart();
     setIsGenerating(true);
@@ -377,6 +388,7 @@ export default function GeneratorPage() {
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
+        signal: abortController.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           generationType,
@@ -384,6 +396,7 @@ export default function GeneratorPage() {
           subjectInfo,
           documentLanguage,
           includeWatermark,
+          includeImages,
           contentStyle: selectedContentLabel,
           designStyle: selectedDesignLabel,
           pageFrame: selectedFrameLabel,
@@ -436,6 +449,10 @@ export default function GeneratorPage() {
 
       if (soundEnabled) soundManager.playGenerateComplete();
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('Generation aborted by user.');
+        return;
+      }
       console.error(err);
       alert(err.message || 'حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.');
     } finally {
@@ -714,12 +731,16 @@ export default function GeneratorPage() {
               <div className="flex flex-col items-center justify-center gap-1">
                 <button 
                   onClick={() => expertChatEmitter.dispatchEvent(new Event('open'))}
-                  className="relative p-1 md:p-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 hover:from-amber-500/40 hover:to-orange-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                  className="relative rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 hover:from-amber-500/40 hover:to-orange-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group shadow-[0_0_15px_rgba(245,158,11,0.3)] overflow-hidden"
                   title="الخبير التربوي"
                 >
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <Bot size={22} className="group-hover:scale-110 transition-transform" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
+                  {(userData?.expertAvatar || localStorage.getItem('expertAvatar')) ? (
+                    <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="Expert" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                  ) : (
+                    <Bot size={22} className="group-hover:scale-110 transition-transform" />
+                  )}
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse z-20"></span>
                 </button>
                 <span className="text-[9px] md:text-[10px] font-semibold text-amber-400/90 whitespace-nowrap">الخبير التربوي</span>
               </div>
@@ -846,7 +867,7 @@ export default function GeneratorPage() {
               <div className="flex flex-col items-center gap-2">
                 <button 
                   onClick={() => profileInputRef.current?.click()}
-                  className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] relative group"
+                  className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] relative group cursor-pointer"
                   title="تغيير الصورة الشخصية"
                 >
                   {(profileImagePreview || userData?.profilePic) ? (
@@ -857,32 +878,15 @@ export default function GeneratorPage() {
                     </div>
                   )}
                 </button>
-                {selectedProfileImage && (
+                {isUploadingProfile && (
                   <div className="flex flex-col items-center gap-1 w-full mt-1">
-                    <div className="flex gap-1 w-full justify-center">
-                      <button 
-                        onClick={handleProfileSave}
-                        disabled={isUploadingProfile}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] px-2 py-1 rounded disabled:opacity-50"
-                      >
-                        {isUploadingProfile ? 'جاري الحفظ...' : 'حفظ'}
-                      </button>
-                      <button 
-                        onClick={handleProfileCancel}
-                        disabled={isUploadingProfile}
-                        className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-[10px] px-2 py-1 rounded disabled:opacity-50"
-                      >
-                        إلغاء
-                      </button>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold animate-pulse">جاري الحفظ...</span>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1 mt-1 overflow-hidden">
+                      <div 
+                        className="bg-indigo-500 h-1 rounded-full transition-all duration-300" 
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
                     </div>
-                    {isUploadingProfile && (
-                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1 mt-1 overflow-hidden">
-                        <div 
-                          className="bg-indigo-500 h-1 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1331,6 +1335,12 @@ export default function GeneratorPage() {
                 إضافة علامة مائية للمادة (Watermark)
               </label>
 
+              <label className="flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-300 font-bold bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/30 transition-colors hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
+                <input type="checkbox" checked={includeImages} onChange={e => setIncludeImages(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 accent-emerald-600" />
+                <ImagePlus size={18} className="text-emerald-500" />
+                مذكرة بصور (توليد رسومات ذكاء اصطناعي حسب الدرس)
+              </label>
+
               <div>
                 <label className="block text-xs font-semibold mb-2 text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <Sparkles size={14} className="text-yellow-500" />
@@ -1346,27 +1356,44 @@ export default function GeneratorPage() {
               </div>
             </div>
 
-            <button 
-              onClick={handleGenerate} 
-              disabled={isGenerating}
-              className={getGenerateButtonClasses()}
-              style={{ backgroundSize: '200% auto' }}
-            >
-              {isGenerating ? (
-                <div className="flex flex-col items-center gap-1">
-                  <div className="flex items-center gap-3">
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span>جاري التوليد الخارق...</span>
+            {(isGenerating || generatedHtml) ? (
+              <button 
+                onClick={() => {
+                  if (abortControllerRef.current) {
+                    abortControllerRef.current.abort();
+                  }
+                  if (soundEnabled) soundManager.playTabClick();
+                  setGeneratedHtml('');
+                  setIsGenerating(false); // Also stop generating state
+                }} 
+                className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white p-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-red-500/30 border border-red-400"
+              >
+                <X size={22} />
+                تراجع عن التوليد (مسح وإعادة)
+              </button>
+            ) : (
+              <button 
+                onClick={handleGenerate} 
+                disabled={isGenerating}
+                className={getGenerateButtonClasses()}
+                style={{ backgroundSize: '200% auto' }}
+              >
+                {isGenerating ? (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex items-center gap-3">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      <span>جاري التوليد الخارق...</span>
+                    </div>
+                    <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
                   </div>
-                  <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-3">
-                  <Zap size={22} className="fill-current" />
-                  توليد حصري مميز
-                </div>
-              )}
-            </button>
+                ) : (
+                  <div className="flex items-center justify-center gap-3">
+                    <Zap size={22} className="fill-current" />
+                    توليد حصري مميز
+                  </div>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
