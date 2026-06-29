@@ -226,19 +226,23 @@ export default function GeneratorPage() {
     alert('تم حفظ معلومات الأستاذ والوثيقة بنجاح!');
   };
 
+  const isFreeMode = userData && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com' && !userData.isPro;
+
   const designStyles = [
     { id: 'style1', label: 'كلاسيكي', icon: BookOpen, color: '#1e40af', twColor: 'text-blue-600', twBg: 'bg-blue-100', twBorder: 'border-blue-200' },
-    { id: 'style2', label: 'إبداعي', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200' },
-    { id: 'style3', label: 'عصري', icon: Sparkles, color: '#059669', twColor: 'text-emerald-600', twBg: 'bg-emerald-100', twBorder: 'border-emerald-200' },
     { id: 'style5', label: 'داكن', icon: Printer, color: '#334155', twColor: 'text-slate-700', twBg: 'bg-slate-200', twBorder: 'border-slate-300' },
-    { id: 'style6', label: 'هندسي', icon: Hexagon, color: '#0891b2', twColor: 'text-cyan-600', twBg: 'bg-cyan-100', twBorder: 'border-cyan-200' },
-    { id: 'style7', label: 'مرح', icon: Smile, color: '#db2777', twColor: 'text-pink-600', twBg: 'bg-pink-100', twBorder: 'border-pink-200' },
-    { id: 'style8', label: 'أكاديمي', icon: GraduationCap, color: '#4f46e5', twColor: 'text-indigo-600', twBg: 'bg-indigo-100', twBorder: 'border-indigo-200' },
-    { id: 'style9', label: 'ناعم', icon: Heart, color: '#e11d48', twColor: 'text-rose-600', twBg: 'bg-rose-100', twBorder: 'border-rose-200' },
-    { id: 'style10', label: 'بني', icon: Coffee, color: '#92400e', twColor: 'text-orange-800', twBg: 'bg-orange-100', twBorder: 'border-orange-200' },
-    { id: 'style13', label: 'خارق للعادة', icon: Layers, color: '#0369a1', twColor: 'text-sky-700', twBg: 'bg-sky-100', twBorder: 'border-sky-200' },
-    { id: 'style14', label: 'طبيعي', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200' },
-    { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200' },
+    ...(isFreeMode ? [] : [
+      { id: 'style2', label: 'إبداعي', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200' },
+      { id: 'style3', label: 'عصري', icon: Sparkles, color: '#059669', twColor: 'text-emerald-600', twBg: 'bg-emerald-100', twBorder: 'border-emerald-200' },
+      { id: 'style6', label: 'هندسي', icon: Hexagon, color: '#0891b2', twColor: 'text-cyan-600', twBg: 'bg-cyan-100', twBorder: 'border-cyan-200' },
+      { id: 'style7', label: 'مرح', icon: Smile, color: '#db2777', twColor: 'text-pink-600', twBg: 'bg-pink-100', twBorder: 'border-pink-200' },
+      { id: 'style8', label: 'أكاديمي', icon: GraduationCap, color: '#4f46e5', twColor: 'text-indigo-600', twBg: 'bg-indigo-100', twBorder: 'border-indigo-200' },
+      { id: 'style9', label: 'ناعم', icon: Heart, color: '#e11d48', twColor: 'text-rose-600', twBg: 'bg-rose-100', twBorder: 'border-rose-200' },
+      { id: 'style10', label: 'بني', icon: Coffee, color: '#92400e', twColor: 'text-orange-800', twBg: 'bg-orange-100', twBorder: 'border-orange-200' },
+      { id: 'style13', label: 'خارق للعادة', icon: Layers, color: '#0369a1', twColor: 'text-sky-700', twBg: 'bg-sky-100', twBorder: 'border-sky-200' },
+      { id: 'style14', label: 'طبيعي', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200' },
+      { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200' }
+    ])
   ];
 
   const contentStyles = [
@@ -250,9 +254,11 @@ export default function GeneratorPage() {
   const pageFrames = [
     { id: 'none', label: 'بدون إطار' },
     { id: 'simple', label: 'إطار بسيط' },
-    { id: 'double', label: 'إطار مزدوج' },
-    { id: 'ornate', label: 'إطار مزخرف مميز' },
-    { id: '3d', label: 'إطار 3D' },
+    ...(isFreeMode ? [] : [
+      { id: 'double', label: 'إطار مزدوج' },
+      { id: 'ornate', label: 'إطار مزخرف مميز' },
+      { id: '3d', label: 'إطار 3D' }
+    ])
   ];
 
   const handleDesignStyleChange = (styleId: string) => {
@@ -564,7 +570,13 @@ export default function GeneratorPage() {
     }
   };
 
-  const addExercise = () => setExercises([...exercises, { id: generateId(), section: '', competencies: [''] }]);
+  const addExercise = () => {
+    if (isFreeMode && exercises.length >= 2) {
+      alert('في النسخة المجانية يمكنك إضافة تمرينين فقط. يرجى تفعيل الوضع الاحترافي!');
+      return;
+    }
+    setExercises([...exercises, { id: generateId(), section: '', competencies: [''] }]);
+  };
   const removeExercise = (id: string) => setExercises(exercises.filter(ex => ex.id !== id));
   
   const updateExerciseSection = (id: string, section: string) => {
@@ -635,115 +647,144 @@ export default function GeneratorPage() {
       </div>
 
       {/* Header */}
-      <header className="bg-black/80 backdrop-blur-md border-b border-amber-900/50 shadow-[0_2px_15px_rgba(212,175,55,0.1)] py-3 px-2 md:py-4 md:px-4 no-print sticky top-0 z-40 transition-colors duration-300">
-        <div className="container mx-auto flex flex-row justify-between items-center gap-2">
+      <header className="bg-black/40 backdrop-blur-xl border-b border-amber-900/50 shadow-[0_2px_15px_rgba(212,175,55,0.1)] py-2 px-2 md:py-3 md:px-4 no-print sticky top-0 z-40 transition-colors duration-300 relative overflow-hidden">
+        {/* Shine effect over the entire header */}
+        <div className="animate-shine-sweep mix-blend-overlay opacity-50 z-0"></div>
+        
+        <div className="container mx-auto flex justify-between items-center gap-1 md:gap-2 relative z-10">
           {/* Logo Section */}
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 relative overflow-hidden rounded-xl p-1">
+            <div className="absolute inset-0 animate-shine-sweep mix-blend-overlay opacity-80 z-20"></div>
+            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
               <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30">
-                 {/* Replaced Sparkles with a more app-like gold text logo that can be safely swapped with an img */}
                  <img src="/icon.png" alt="Logo" className="w-full h-full object-cover rounded-[10px] hidden group-hover:block" onError={(e) => e.currentTarget.style.display = 'none'} />
                  <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
               </div>
             </div>
             <div className="flex flex-col shrink-0 truncate">
-              <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate" dir="ltr">
-                PRO GÉNIRATEUR AI
-              </h1>
-              <p className="text-[9px] md:text-xs text-amber-500/80 font-bold mt-1 tracking-wide truncate">المساعد الذكي للأستاذ</p>
+              <div className="hidden sm:flex items-center gap-1.5" dir="ltr">
+                <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
+                  PRO GÉNÉRATEUR
+                </h1>
+                <span className="text-lg drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
+              </div>
+              <div className="sm:hidden flex items-center gap-1" dir="ltr">
+                <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
+                  PRO AI
+                </h1>
+                <span className="text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
+              </div>
+              <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-1 tracking-wide truncate">المساعد الذكي للأستاذ</p>
             </div>
           </div>
 
           {/* Actions Section */}
-          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-            <div className="hidden sm:flex items-center bg-[#1a1a1a] p-1 rounded-lg border border-amber-900/30">
-              <Languages size={14} className="text-amber-500/70 ml-1" />
-              <select 
-                value={documentLanguage} 
-                onChange={(e) => setDocumentLanguage(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-amber-100 outline-none pr-1 pl-2 cursor-pointer"
-              >
-                <option value="ar">العربية</option>
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-              </select>
-            </div>
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 py-1">
             
-            <button 
-              onClick={() => setIsDownloadsModalOpen(true)}
-              className="relative p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
-              title="التنزيلات"
-            >
-              <Download size={18} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-            
-            <button 
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
-              title={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
-            >
-              {soundEnabled ? <Volume2 size={18} className="text-amber-400" /> : <VolumeX size={18} className="text-red-500/80" />}
-            </button>
-            
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
-            <input type="file" ref={bgInputRef} onChange={handleAppBgUpload} className="hidden" accept="image/*" />
-            <button 
-              onClick={() => bgInputRef.current?.click()}
-              className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors"
-              title="تغيير صورة الخلفية"
-            >
-              <ImagePlus size={18} />
-            </button>
-            <div className="relative group flex items-center justify-center">
-               <button className="p-1.5 md:p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors" title="تغيير لون الخلفية">
-                 <Palette size={18} />
-               </button>
-               <input 
-                 type="color" 
-                 value={appBgColor || '#f8f9fa'}
-                 onChange={handleAppBgColorChange} 
-                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-               />
-            </div>
-            
-            <div className="flex items-center gap-1.5 md:gap-2 border-r border-amber-900/50 pr-2 md:pr-3 ml-1">
-              <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
+            {/* Grid for stacking tool buttons */}
+            <div className="grid grid-rows-2 grid-flow-col gap-1 md:gap-1.5 items-center">
               <button 
-                onClick={() => profileInputRef.current?.click()}
-                className="w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] relative group"
-                title="تغيير الصورة الشخصية"
+                onClick={() => setIsDownloadsModalOpen(true)}
+                className="relative p-1 md:p-1.5 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center w-9 h-9 md:w-10 md:h-10"
+                title="التنزيلات"
               >
-                {(profileImagePreview || userData?.profilePic) ? (
-                  <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
-                ) : (
-                  <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
-                    <User size={16} />
-                  </div>
+                <Download size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                    {unreadCount}
+                  </span>
                 )}
               </button>
-              <span className="text-xs md:text-sm font-semibold text-amber-200 hidden md:block max-w-[100px] truncate mr-1">
-                {userData?.firstName}
-              </span>
-              {userData && (
-                <button onClick={() => navigate('/admin')} className="p-1.5 md:p-2 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30" title="لوحة التحكم">
-                  <Shield size={18} />
-                </button>
-              )}
-              <button onClick={() => { signOut(); navigate('/login'); }} className="p-1.5 md:p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-500/30" title="تسجيل الخروج">
-                <LogOut size={18} />
+              
+              <button 
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="p-1 md:p-1.5 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center w-9 h-9 md:w-10 md:h-10"
+                title={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
+              >
+                {soundEnabled ? <Volume2 size={18} className="text-amber-400" /> : <VolumeX size={18} className="text-red-500/80" />}
               </button>
+              
+              <button 
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-1 md:p-1.5 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center w-9 h-9 md:w-10 md:h-10"
+                title="تغيير المظهر"
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              <div className="relative group flex items-center justify-center w-9 h-9 md:w-10 md:h-10">
+                <button className="w-full h-full rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center" title="تغيير لون الخلفية">
+                  <Palette size={18} />
+                </button>
+                <input 
+                  type="color" 
+                  value={appBgColor || '#f8f9fa'}
+                  onChange={handleAppBgColorChange} 
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </div>
+
+              <div className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center">
+                <input type="file" ref={bgInputRef} onChange={handleAppBgUpload} className="hidden" accept="image/*" />
+                <button 
+                  onClick={() => bgInputRef.current?.click()}
+                  className="w-full h-full rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center"
+                  title="تغيير صورة الخلفية"
+                >
+                  <ImagePlus size={18} />
+                </button>
+              </div>
+
+              <div className="hidden sm:flex items-center justify-center bg-[#1a1a1a] rounded-lg border border-amber-900/30 w-9 h-9 md:w-10 md:h-10">
+                <select 
+                  value={documentLanguage} 
+                  onChange={(e) => setDocumentLanguage(e.target.value)}
+                  className="bg-transparent border-none text-xs font-bold text-amber-100 outline-none w-full h-full text-center cursor-pointer appearance-none px-1"
+                  title="تغيير اللغة"
+                >
+                  <option value="ar">AR</option>
+                  <option value="fr">FR</option>
+                  <option value="en">EN</option>
+                </select>
+              </div>
             </div>
+            
+            <div className="w-px h-12 bg-amber-900/50 mx-0.5 md:mx-1"></div>
+            
+            {/* User & Admin controls */}
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <div className="flex flex-col items-center gap-1">
+                <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
+                <button 
+                  onClick={() => profileInputRef.current?.click()}
+                  className="w-7 h-7 md:w-9 md:h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] relative group"
+                  title="تغيير الصورة الشخصية"
+                >
+                  {(profileImagePreview || userData?.profilePic) ? (
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
+                      <User size={14} />
+                    </div>
+                  )}
+                </button>
+                <span className="text-[9px] md:text-[10px] font-semibold text-amber-200 max-w-[40px] md:max-w-[60px] truncate text-center">
+                  {userData?.firstName || "مستخدم"}
+                </span>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                {userData && (userData.role === 'admin' || userData.email === 'dalinadjib1990@gmail.com') && (
+                  <button onClick={() => navigate('/admin')} className="p-1 md:p-1.5 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="لوحة التحكم">
+                    <Shield size={14} />
+                  </button>
+                )}
+                <button onClick={() => { signOut(); navigate('/login'); }} className="p-1 md:p-1.5 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="تسجيل الخروج">
+                  <LogOut size={14} />
+                </button>
+              </div>
+            </div>
+            
           </div>
         </div>
       </header>
@@ -753,7 +794,7 @@ export default function GeneratorPage() {
         <div className="w-full xl:w-[420px] flex flex-col gap-4 lg:gap-6 no-print shrink-0">
           
           {/* Teacher Profile Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-800 p-6 overflow-hidden relative group">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-100/50 dark:border-slate-800/50 p-6 overflow-hidden relative group">
             <div className="absolute top-0 right-0 w-1.5 h-full bg-gradient-to-b from-indigo-500 to-purple-500 group-hover:w-2 transition-all"></div>
             <div className="flex justify-between items-start mb-5">
               <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
@@ -948,7 +989,7 @@ export default function GeneratorPage() {
           </div>
 
           {/* Generator Controls */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-800 p-6">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-100/50 dark:border-slate-800/50 p-6">
             
             {/* Tabs */}
             <div className="flex flex-wrap gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl mb-6 shadow-inner">
@@ -1263,7 +1304,7 @@ export default function GeneratorPage() {
         {/* Preview Area (A4) */}
         <div className="flex-1 flex flex-col items-center">
           
-          <div className="w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4 no-print bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <div className="w-full flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4 no-print bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-4 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-800/50">
             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 shrink-0">
               <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-lg">
                 <FileText size={20} />

@@ -15,6 +15,7 @@ export interface UserData {
   email: string;
   phone: string;
   role: UserRole;
+  isPro?: boolean;
   generationsRemaining: number;
   totalGenerations: number;
   profilePic?: string;

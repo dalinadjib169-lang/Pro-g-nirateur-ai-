@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { AlertCircle } from 'lucide-react';
 import LoadingScreen from './components/LoadingScreen';
+import { TeachersRoom } from './components/TeachersRoom';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -71,7 +72,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
     return <Navigate to="/login" />;
   }
 
-  if (requireAdmin && userData.role !== 'admin') {
+  if (requireAdmin && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com') {
     return <Navigate to="/" />;
   }
 
@@ -80,26 +81,29 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route 
-        path="/" 
-        element={
-          <ProtectedRoute>
-            <GeneratorPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute requireAdmin={true}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        } 
-      />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <GeneratorPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+      <TeachersRoom />
+    </>
   );
 }
 
