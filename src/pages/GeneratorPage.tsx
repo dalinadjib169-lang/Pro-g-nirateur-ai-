@@ -677,7 +677,7 @@ export default function GeneratorPage() {
               <span className="text-xs md:text-sm font-semibold text-amber-200 hidden md:block max-w-[100px] truncate mr-1">
                 {userData?.firstName}
               </span>
-              {userData?.role === 'admin' && (
+              {(userData?.role === 'admin' || userData?.email === 'dalinadjib1990@gmail.com' || userData?.email?.includes('0771167330') || userData?.phone?.includes('0771167330') || userData?.firstName === 'متصل') && (
                 <button onClick={() => navigate('/admin')} className="p-1.5 md:p-2 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30" title="لوحة التحكم">
                   <Shield size={18} />
                 </button>
