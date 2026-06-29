@@ -44,8 +44,15 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
       if (isAndroidWebView) {
         const url = await getFirebaseUrl(file);
         if (url) {
-          // Navigating to the HTTPS URL triggers the native Android DownloadManager
-          window.location.href = url;
+          // Navigating in the same window causes AppCreator24 to crash.
+          // We use target="_blank" so the WebView delegates it to the native Download Manager or external browser.
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
           setDownloadingId(null);
           return;
         } else {
@@ -137,8 +144,16 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
       }
 
       if (isAndroidWebView) {
-        // If navigator.share fails in WebView and we have a URL, just open it
-        if (shareUrl) window.location.href = shareUrl;
+        // If navigator.share fails in WebView and we have a URL, copy it to clipboard
+        if (shareUrl) {
+          try {
+             await navigator.clipboard.writeText(shareUrl);
+             alert("تم نسخ رابط الملف! يمكنك الآن لصقه في واتساب أو أي تطبيق آخر.");
+          } catch (e) {
+             // Fallback if clipboard fails (sometimes denied in webviews)
+             alert(`الرابط (انسخه يدوياً):\n\n${shareUrl}`);
+          }
+        }
         setDownloadingId(null);
         return;
       }
