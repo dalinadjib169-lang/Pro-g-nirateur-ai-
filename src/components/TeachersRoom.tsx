@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
+import { profileModalEmitter } from '../App';
 
 export const uploadToCloudinary = async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
   const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -365,9 +366,14 @@ export const TeachersRoom: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => profileModalEmitter.dispatchEvent(new Event('open'))} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10" title="تحديث الملف الشخصي">
+                  <Settings size={18} />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Content */}

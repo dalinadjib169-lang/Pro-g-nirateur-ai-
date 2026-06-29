@@ -84,14 +84,21 @@ import { ExpertChat } from './components/ExpertChat';
 
 // Add export event emitter for expert chat
 export const expertChatEmitter = new EventTarget();
+export const profileModalEmitter = new EventTarget();
 
 function AppRoutes() {
   const [isExpertChatOpen, setIsExpertChatOpen] = React.useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
 
   React.useEffect(() => {
-    const handleOpen = () => setIsExpertChatOpen(true);
-    expertChatEmitter.addEventListener('open', handleOpen);
-    return () => expertChatEmitter.removeEventListener('open', handleOpen);
+    const handleExpertOpen = () => setIsExpertChatOpen(true);
+    const handleProfileOpen = () => setIsProfileModalOpen(true);
+    expertChatEmitter.addEventListener('open', handleExpertOpen);
+    profileModalEmitter.addEventListener('open', handleProfileOpen);
+    return () => {
+      expertChatEmitter.removeEventListener('open', handleExpertOpen);
+      profileModalEmitter.removeEventListener('open', handleProfileOpen);
+    }
   }, []);
 
   return (
@@ -118,7 +125,7 @@ function AppRoutes() {
       </Routes>
       <TeachersRoom />
       <ExpertChat isOpen={isExpertChatOpen} onClose={() => setIsExpertChatOpen(false)} />
-      <CompleteProfileModal />
+      <CompleteProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
     </>
   );
 }

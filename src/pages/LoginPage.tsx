@@ -81,7 +81,15 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.warn(err);
-      setError('حدث خطأ أثناء تسجيل الدخول باستخدام Google.');
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('يرجى فتح التطبيق في نافذة جديدة (New Tab) لاستخدام تسجيل الدخول عبر Google.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError('تم إغلاق نافذة تسجيل الدخول قبل اكتمال العملية.');
+      } else {
+        setError('حدث خطأ أثناء تسجيل الدخول عبر Google: ' + err.message);
+      }
       setLoading(false);
     }
   };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Image as ImageIcon } from 'lucide-react';
+import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Settings, Image as ImageIcon } from 'lucide-react';
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
@@ -9,7 +9,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
-import { expertChatEmitter } from '../App';
+import { expertChatEmitter, profileModalEmitter } from '../App';
 
 // Simple unique ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -240,18 +240,16 @@ export default function GeneratorPage() {
   let designStyles = [
     { id: 'style1', label: 'كلاسيكي', icon: BookOpen, color: '#1e40af', twColor: 'text-blue-600', twBg: 'bg-blue-100', twBorder: 'border-blue-200' },
     { id: 'style5', label: 'داكن', icon: Printer, color: '#334155', twColor: 'text-slate-700', twBg: 'bg-slate-200', twBorder: 'border-slate-300' },
-    ...(isFreeMode ? [] : [
-      { id: 'style2', label: 'إبداعي', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200' },
-      { id: 'style3', label: 'عصري', icon: Sparkles, color: '#059669', twColor: 'text-emerald-600', twBg: 'bg-emerald-100', twBorder: 'border-emerald-200' },
-      { id: 'style6', label: 'هندسي', icon: Hexagon, color: '#0891b2', twColor: 'text-cyan-600', twBg: 'bg-cyan-100', twBorder: 'border-cyan-200' },
-      { id: 'style7', label: 'مرح', icon: Smile, color: '#db2777', twColor: 'text-pink-600', twBg: 'bg-pink-100', twBorder: 'border-pink-200' },
-      { id: 'style8', label: 'أكاديمي', icon: GraduationCap, color: '#4f46e5', twColor: 'text-indigo-600', twBg: 'bg-indigo-100', twBorder: 'border-indigo-200' },
-      { id: 'style9', label: 'ناعم', icon: Heart, color: '#e11d48', twColor: 'text-rose-600', twBg: 'bg-rose-100', twBorder: 'border-rose-200' },
-      { id: 'style10', label: 'بني', icon: Coffee, color: '#92400e', twColor: 'text-orange-800', twBg: 'bg-orange-100', twBorder: 'border-orange-200' },
-      { id: 'style13', label: 'خارق للعادة', icon: Layers, color: '#0369a1', twColor: 'text-sky-700', twBg: 'bg-sky-100', twBorder: 'border-sky-200' },
-      { id: 'style14', label: 'طبيعي', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200' },
-      { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200' }
-    ])
+    { id: 'style2', label: 'إبداعي', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200', isPro: true },
+    { id: 'style3', label: 'عصري', icon: Sparkles, color: '#059669', twColor: 'text-emerald-600', twBg: 'bg-emerald-100', twBorder: 'border-emerald-200', isPro: true },
+    { id: 'style6', label: 'هندسي', icon: Hexagon, color: '#0891b2', twColor: 'text-cyan-600', twBg: 'bg-cyan-100', twBorder: 'border-cyan-200', isPro: true },
+    { id: 'style7', label: 'مرح', icon: Smile, color: '#db2777', twColor: 'text-pink-600', twBg: 'bg-pink-100', twBorder: 'border-pink-200', isPro: true },
+    { id: 'style8', label: 'أكاديمي', icon: GraduationCap, color: '#4f46e5', twColor: 'text-indigo-600', twBg: 'bg-indigo-100', twBorder: 'border-indigo-200', isPro: true },
+    { id: 'style9', label: 'ناعم', icon: Heart, color: '#e11d48', twColor: 'text-rose-600', twBg: 'bg-rose-100', twBorder: 'border-rose-200', isPro: true },
+    { id: 'style10', label: 'بني', icon: Coffee, color: '#92400e', twColor: 'text-orange-800', twBg: 'bg-orange-100', twBorder: 'border-orange-200', isPro: true },
+    { id: 'style13', label: 'خارق للعادة', icon: Layers, color: '#0369a1', twColor: 'text-sky-700', twBg: 'bg-sky-100', twBorder: 'border-sky-200', isPro: true },
+    { id: 'style14', label: 'طبيعي', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200', isPro: true },
+    { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200', isPro: true }
   ];
 
   if (generationType === 'visual') {
@@ -271,11 +269,9 @@ export default function GeneratorPage() {
   const pageFrames = [
     { id: 'none', label: 'بدون إطار' },
     { id: 'simple', label: 'إطار بسيط' },
-    ...(isFreeMode ? [] : [
-      { id: 'double', label: 'إطار مزدوج' },
-      { id: 'ornate', label: 'إطار مزخرف مميز' },
-      { id: '3d', label: 'إطار 3D' }
-    ])
+    { id: 'double', label: 'إطار مزدوج', isPro: true },
+    { id: 'ornate', label: 'إطار مزخرف مميز', isPro: true },
+    { id: '3d', label: 'إطار 3D', isPro: true }
   ];
 
   const handleDesignStyleChange = (styleId: string) => {
@@ -715,15 +711,18 @@ export default function GeneratorPage() {
                 )}
               </button>
               
-              <button 
-                onClick={() => expertChatEmitter.dispatchEvent(new Event('open'))}
-                className="relative p-1 md:p-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 hover:from-amber-500/40 hover:to-orange-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                title="الخبير التربوي"
-              >
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <Bot size={22} className="group-hover:scale-110 transition-transform" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
-              </button>
+              <div className="flex flex-col items-center justify-center gap-1">
+                <button 
+                  onClick={() => expertChatEmitter.dispatchEvent(new Event('open'))}
+                  className="relative p-1 md:p-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 hover:from-amber-500/40 hover:to-orange-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                  title="الخبير التربوي"
+                >
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <Bot size={22} className="group-hover:scale-110 transition-transform" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
+                </button>
+                <span className="text-[9px] md:text-[10px] font-semibold text-amber-400/90 whitespace-nowrap">الخبير التربوي</span>
+              </div>
 
               <button 
                 onClick={() => setSoundEnabled(!soundEnabled)}
@@ -756,11 +755,22 @@ export default function GeneratorPage() {
               <div className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center">
                 <input type="file" ref={bgInputRef} onChange={handleAppBgUpload} className="hidden" accept="image/*" />
                 <button 
-                  onClick={() => bgInputRef.current?.click()}
-                  className="w-full h-full rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center"
-                  title="تغيير صورة الخلفية"
+                  onClick={() => {
+                    if (isFreeMode) {
+                      alert('هذه الخاصية متاحة للمشتركين فقط. يرجى الترقية!');
+                      return;
+                    }
+                    bgInputRef.current?.click();
+                  }}
+                  className="w-full h-full rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center relative group"
+                  title="تغيير صورة الخلفية (للمشتركين فقط)"
                 >
                   <ImagePlus size={18} />
+                  {isFreeMode && (
+                    <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center backdrop-blur-[1px]">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 drop-shadow-md"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                  )}
                 </button>
               </div>
 
@@ -803,6 +813,9 @@ export default function GeneratorPage() {
               </div>
               
               <div className="flex flex-col gap-1">
+                <button onClick={() => profileModalEmitter.dispatchEvent(new Event('open'))} className="p-1 md:p-1.5 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="تحديث الملف الشخصي">
+                  <Settings size={14} />
+                </button>
                 {userData && (userData.role === 'admin' || userData.email === 'dalinadjib1990@gmail.com') && (
                   <button onClick={() => navigate('/admin')} className="p-1 md:p-1.5 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="لوحة التحكم">
                     <Shield size={14} />
@@ -1227,35 +1240,49 @@ export default function GeneratorPage() {
               <div>
                 <label className="block text-xs font-bold mb-3 text-slate-800 dark:text-slate-200 uppercase tracking-wider">ستايل التصميم والألوان</label>
                 <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                  {designStyles.map(style => (
-                    <button
-                      key={style.id}
-                      onClick={() => handleDesignStyleChange(style.id)}
-                      className={`relative flex flex-col items-center justify-center gap-2 transition-all group ${
-                        designStyle === style.id ? 'transform scale-110' : 'hover:transform hover:scale-105 hover:-translate-y-1 opacity-80 hover:opacity-100'
-                      }`}
-                      style={{ width: '70px' }}
-                    >
-                      {/* Magic Ball Element */}
-                      <div 
-                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg relative overflow-hidden transition-all duration-300 ${designStyle === style.id ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
-                        style={{
-                          background: designStyle === style.id 
-                            ? `radial-gradient(circle at 30% 30%, ${style.color}cc 0%, ${style.color} 60%, #000000 150%)` 
-                            : 'radial-gradient(circle at 30% 30%, #f1f5f9 0%, #cbd5e1 60%, #94a3b8 150%)',
-                          color: designStyle === style.id ? 'white' : '#64748b',
-                          boxShadow: designStyle === style.id ? `0 10px 15px -3px ${style.color}60` : '0 4px 6px -1px rgba(0,0,0,0.1)'
+                  {designStyles.map(style => {
+                    const isLocked = isFreeMode && style.isPro;
+                    return (
+                      <button
+                        key={style.id}
+                        onClick={() => {
+                          if (isLocked) {
+                            alert('هذا التصميم متاح للمشتركين فقط. يرجى الترقية لفتحه!');
+                            return;
+                          }
+                          handleDesignStyleChange(style.id);
                         }}
+                        className={`relative flex flex-col items-center justify-center gap-2 transition-all group ${
+                          designStyle === style.id ? 'transform scale-110' : 'hover:transform hover:scale-105 hover:-translate-y-1 opacity-80 hover:opacity-100'
+                        } ${isLocked ? 'grayscale opacity-60 hover:grayscale-0' : ''}`}
+                        style={{ width: '70px' }}
                       >
-                        {/* Specular reflection for magic ball effect */}
-                        <div className="absolute top-1 left-2 w-5 h-3 bg-white opacity-40 rounded-full blur-[1px] -rotate-45 group-hover:opacity-60 transition-opacity" />
-                        <style.icon size={22} className="relative z-10 drop-shadow-md" />
-                      </div>
-                      <span className={`text-[11px] text-center font-bold transition-colors ${designStyle === style.id ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {style.label}
-                      </span>
-                    </button>
-                  ))}
+                        {isLocked && (
+                          <div className="absolute top-0 right-0 z-20 bg-slate-900/80 rounded-full p-1 shadow-sm border border-slate-700/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                          </div>
+                        )}
+                        {/* Magic Ball Element */}
+                        <div 
+                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg relative overflow-hidden transition-all duration-300 ${designStyle === style.id ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
+                          style={{
+                            background: designStyle === style.id 
+                              ? `radial-gradient(circle at 30% 30%, ${style.color}cc 0%, ${style.color} 60%, #000000 150%)` 
+                              : 'radial-gradient(circle at 30% 30%, #f1f5f9 0%, #cbd5e1 60%, #94a3b8 150%)',
+                            color: designStyle === style.id ? 'white' : '#64748b',
+                            boxShadow: designStyle === style.id ? `0 10px 15px -3px ${style.color}60` : '0 4px 6px -1px rgba(0,0,0,0.1)'
+                          }}
+                        >
+                          {/* Specular reflection for magic ball effect */}
+                          <div className="absolute top-1 left-2 w-5 h-3 bg-white opacity-40 rounded-full blur-[1px] -rotate-45 group-hover:opacity-60 transition-opacity" />
+                          <style.icon size={22} className="relative z-10 drop-shadow-md" />
+                        </div>
+                        <span className={`text-[11px] text-center font-bold transition-colors ${designStyle === style.id ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                          {style.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1263,23 +1290,35 @@ export default function GeneratorPage() {
               <div>
                 <label className="block text-xs font-bold mb-3 text-slate-800 dark:text-slate-200 uppercase tracking-wider">إطار الصفحة</label>
                 <div className="flex flex-wrap gap-3">
-                  {pageFrames.map(frame => (
-                    <button
-                      key={frame.id}
-                      onClick={() => {
-                        if (soundEnabled) soundManager.playTabClick();
-                        setPageFrame(frame.id);
-                      }}
-                      className={`flex-1 min-w-[80px] py-3 px-2 rounded-xl border-2 text-xs font-bold transition-all relative group overflow-hidden ${
-                        pageFrame === frame.id 
-                          ? 'bg-slate-800 text-white border-slate-900 shadow-[0_4px_0_0_#0f172a] hover:translate-y-1 hover:shadow-[0_0px_0_0_#0f172a] dark:bg-slate-200 dark:text-slate-900 dark:border-white dark:shadow-[0_4px_0_0_#94a3b8]' 
-                          : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:-translate-y-1 hover:shadow-[0_4px_0_0_#94a3b8] dark:hover:shadow-[0_4px_0_0_#334155]'
-                      }`}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      {frame.label}
-                    </button>
-                  ))}
+                  {pageFrames.map(frame => {
+                    const isLocked = isFreeMode && frame.isPro;
+                    return (
+                      <button
+                        key={frame.id}
+                        onClick={() => {
+                          if (isLocked) {
+                            alert('هذا الإطار متاح للمشتركين فقط. يرجى الترقية لفتحه!');
+                            return;
+                          }
+                          if (soundEnabled) soundManager.playTabClick();
+                          setPageFrame(frame.id);
+                        }}
+                        className={`flex-1 min-w-[80px] py-3 px-2 rounded-xl border-2 text-xs font-bold transition-all relative group overflow-hidden ${
+                          pageFrame === frame.id 
+                            ? 'bg-slate-800 text-white border-slate-900 shadow-[0_4px_0_0_#0f172a] hover:translate-y-1 hover:shadow-[0_0px_0_0_#0f172a] dark:bg-slate-200 dark:text-slate-900 dark:border-white dark:shadow-[0_4px_0_0_#94a3b8]' 
+                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:-translate-y-1 hover:shadow-[0_4px_0_0_#94a3b8] dark:hover:shadow-[0_4px_0_0_#334155]'
+                        } ${isLocked ? 'opacity-60' : ''}`}
+                      >
+                        {isLocked && (
+                          <div className="absolute top-1 right-1 z-20 text-slate-400 dark:text-slate-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {frame.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
