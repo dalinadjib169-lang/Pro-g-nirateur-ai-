@@ -119,7 +119,7 @@ export const TeachersRoom: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', 'ml_default');
+      formData.append('upload_preset', 'teachers_room');
       const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
         method: 'POST',
         body: formData
@@ -373,7 +373,7 @@ export const TeachersRoom: React.FC = () => {
             title="قاعة الأساتذة"
           >
             {userData.profilePic ? (
-              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.firstName || 'U')}&background=random` }} />
             ) : (
               <User size={28} className="text-white" />
             )}
@@ -403,7 +403,7 @@ export const TeachersRoom: React.FC = () => {
                   <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-fuchsia-500 rounded-full blur-sm opacity-80 animate-pulse"></div>
                   <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white relative overflow-hidden">
                     {userData.profilePic ? (
-                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.firstName || 'U')}&background=random` }} />
                     ) : (
                       <User className="w-full h-full p-2 text-indigo-300" />
                     )}
@@ -437,7 +437,7 @@ export const TeachersRoom: React.FC = () => {
                   {(roomBanner || (userData?.email === 'dalinadjib1990@gmail.com' || userData?.role === 'admin')) && (
                     <div className="mb-4 relative rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 h-32 group">
                       {roomBanner ? (
-                        <img src={roomBanner} alt="تجمع الأساتذة" className="w-full h-full object-cover" />
+                        <img src={roomBanner} alt="تجمع الأساتذة" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-bold">
                           صورة قاعة الأساتذة العامة
@@ -490,7 +490,7 @@ export const TeachersRoom: React.FC = () => {
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-500 shadow-lg shadow-amber-500/20 flex items-center justify-center bg-slate-800">
                           {userData?.expertAvatar || localStorage.getItem('expertAvatar') ? (
-                            <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="الخبير التربوي" className="w-full h-full object-cover" />
+                            <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="الخبير التربوي" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
                             <img src="/icon.png" alt="الخبير التربوي" className="w-full h-full object-cover" />
                           )}
@@ -541,7 +541,7 @@ export const TeachersRoom: React.FC = () => {
                         <div className="relative">
                           <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${teacher.email === 'dalinadjib1990@gmail.com' ? 'border-amber-500' : 'border-indigo-100 dark:border-indigo-900'}`}>
                             {teacher.profilePic ? (
-                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.firstName || 'U')}&background=random` }} />
                             ) : (
                               <div className="w-full h-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-500">
                                 <User size={20} />
@@ -583,7 +583,7 @@ export const TeachersRoom: React.FC = () => {
                     </button>
                     <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 overflow-hidden">
                       {activeChat.profilePic ? (
-                        <img src={activeChat.profilePic} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src={activeChat.profilePic} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(activeChat.firstName || 'U')}&background=random` }} />
                       ) : (
                         <User className="w-full h-full p-1.5 text-indigo-500" />
                       )}
@@ -641,7 +641,7 @@ export const TeachersRoom: React.FC = () => {
                               <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700 rounded-tl-none shadow-sm'}`}>
                                 {msg.imageUrl && (
                                   <a href={msg.imageUrl} target="_blank" rel="noreferrer">
-                                    <img src={msg.imageUrl} alt="Attachment" className="rounded-xl mb-2 max-w-full h-auto cursor-pointer" />
+                                    <img src={msg.imageUrl} alt="Attachment" className="rounded-xl mb-2 max-w-full h-auto cursor-pointer" referrerPolicy="no-referrer" />
                                   </a>
                                 )}
                                 {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}

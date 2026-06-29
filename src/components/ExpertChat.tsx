@@ -44,7 +44,7 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
       try {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('upload_preset', 'ml_default');
+        formData.append('upload_preset', 'teachers_room');
 
         const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
           method: 'POST',
@@ -145,7 +145,7 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                   {isUploadingAvatar ? (
                     <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
                   ) : expertAvatar ? (
-                    <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" />
+                    <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     <Bot size={20} />
                   )}
@@ -191,7 +191,7 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                       {!isUser ? (
                         <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center text-amber-600 flex-shrink-0 ml-2 mt-1 border border-amber-200 dark:border-amber-800 shadow-sm overflow-hidden">
                           {expertAvatar ? (
-                            <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" />
+                            <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
                             <Bot size={16} />
                           )}
@@ -209,7 +209,7 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                       {isUser ? (
                         <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 overflow-hidden flex-shrink-0 mr-2 mt-1 border border-slate-300 dark:border-slate-600 shadow-sm">
                           {userData?.profilePic ? (
-                            <img src={userData.profilePic} alt="User" className="w-full h-full object-cover" />
+                            <img src={userData.profilePic} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
                             <User size={16} />
                           )}
@@ -223,7 +223,7 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                   <div className="flex justify-start">
                     <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 overflow-hidden flex-shrink-0 ml-2 mt-1 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600">
                       {expertAvatar ? (
-                        <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" />
+                        <img src={expertAvatar} alt="Expert" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <Bot size={16} />
                       )}

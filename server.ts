@@ -61,7 +61,7 @@ async function startServer() {
         return res.status(500).json({ error: "No API keys configured" });
       }
 
-      const { generationType, teacherInfo, subjectInfo, aiPrompt, documentLanguage, includeWatermark, includeImages, contentStyle, designStyle, pageFrame } = req.body;
+      const { generationType, teacherInfo, subjectInfo, aiPrompt, documentLanguage, includeWatermark, contentStyle, designStyle, pageFrame } = req.body;
 
       if (!generationType) {
         return res.status(400).json({ error: "generationType is required" });
@@ -80,6 +80,7 @@ async function startServer() {
       4. لا تضف أي هوامش جانبية ضخمة (margins/padding) للحاويات الرئيسية، اجعل العرض 100% لتستغل عرض الورقة.
       5. ممنوع قطعياً استخدام وسم <style>. جميع التنسيقات يجب أن تكون inline CSS (أي style="...").
       6. ممنوع استخدام خصائص position: fixed أو position: absolute إلا في العلامة المائية فقط لتجنب تخريب واجهة التطبيق.
+      7. **الرموز الرياضية والمتغيرات**: في العمليات الحسابية والرياضيات والفيزياء، استخدم الحروف اللاتينية حصراً (x, y, z, a, b, c) ولا تستخدم الحروف العربية (مثل س، ص، ع) أبدأ في المعادلات.
       
       تعليمات التصميم والهيكلة:
       1. ستايل التصميم (Design Style): المستخدم اختار "${designStyle}". طبق هذا النمط من خلال الألوان المتدرجة، أشكال العناوين، الزوايا المنحنية، والخطوط للفقرات والبطاقات الداخلية. 
@@ -89,10 +90,9 @@ async function startServer() {
          - "مضمون عادي": توازن معتاد.
       3. الترويسة (Header) أفقية بالكامل توزع معلومات الدولة، المؤسسة، الأستاذ، والمادة.
       4. **الجداول**: الجداول يجب أن تكون بعرض 100%. لون صف العناوين بـ var(--doc-color).
-      5. **الأشكال والرسومات**: أضف أشكال (SVG) تناسب المادة (رياضيات: هندسة، علوم: نباتات/خلايا، إلخ).
+      5. **الأشكال والرسومات**: أضف أشكال (SVG) بسيطة فقط إذا لزم الأمر، لا تحاول توليد صور معقدة أو روابط خارجية لصور.
       6. **العلامة المائية (Watermark)**: ${includeWatermark ? 'المستخدم طلب علامة مائية. أضف عنصر <div> كأول عنصر في body. أعطه الكلاس `watermark-bg` فقط بدون أي inline styles. وضع بداخله رسمة SVG تناسب المادة.' : 'المستخدم لم يطلب علامة مائية. لا تضف أي علامة مائية.'}
-      7. **الصور التوضيحية**: ${includeImages ? 'مهم جداً و إجباري: يجب أن تضع على الأقل 3 صور توضيحية باستخدام الذكاء الاصطناعي داخل المذكرة. استخدم وسم <img> حصراً واجعل الرابط: `https://image.pollinations.ai/prompt/{english-description-with-hyphens}?width=800&height=400&nologo=true` مثال: `<img src="https://image.pollinations.ai/prompt/digestive-system-diagram-biology?width=800&height=400&nologo=true" style="width:100%; border-radius:8px; margin:20px 0; box-shadow:0 4px 6px rgba(0,0,0,0.1);" />`. لا تنسى هذه الصور أبداً!' : 'المستخدم لم يطلب صور. لا تستخدم pollinations.ai.'}
-      8. اللغة: التزم بلغة الوثيقة ${documentLanguage} مع ضبط اتجاه النص (RTL للعربية، LTR للغات الأجنبية).`;
+      7. اللغة: التزم بلغة الوثيقة ${documentLanguage} مع ضبط اتجاه النص (RTL للعربية، LTR للغات الأجنبية).`;
       
       let typeLabel = '';
       if (generationType === 'memo') typeLabel = 'مذكرة درس';

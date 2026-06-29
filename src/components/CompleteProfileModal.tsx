@@ -104,7 +104,7 @@ export const CompleteProfileModal: React.FC<{ isOpen: boolean; onClose: () => vo
     formData.append('upload_preset', 'teachers_room');
 
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/dh3i1wodq/image/upload', {
+      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
         method: 'POST',
         body: formData
       });

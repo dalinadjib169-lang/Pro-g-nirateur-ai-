@@ -108,7 +108,6 @@ export default function GeneratorPage() {
   const [docColor, setDocColor] = useState('#1e40af');
   const [documentLanguage, setDocumentLanguage] = useState('ar');
   const [includeWatermark, setIncludeWatermark] = useState(false);
-  const [includeImages, setIncludeImages] = useState(false);
 
   // Scaling logic
   const containerRef = useRef<HTMLDivElement>(null);
@@ -205,7 +204,6 @@ export default function GeneratorPage() {
         if (parsed.memoContent) setMemoContent(parsed.memoContent);
         if (parsed.documentLanguage) setDocumentLanguage(parsed.documentLanguage);
         if (parsed.includeWatermark !== undefined) setIncludeWatermark(parsed.includeWatermark);
-        if (parsed.includeImages !== undefined) setIncludeImages(parsed.includeImages);
         if (parsed.hasIntegration !== undefined) setHasIntegration(parsed.hasIntegration);
         if (parsed.contentStyle) setContentStyle(parsed.contentStyle);
         if (parsed.designStyle) setDesignStyle(parsed.designStyle);
@@ -227,7 +225,6 @@ export default function GeneratorPage() {
       memoContent,
       documentLanguage,
       includeWatermark,
-      includeImages,
       hasIntegration,
       contentStyle,
       designStyle,
@@ -299,7 +296,7 @@ export default function GeneratorPage() {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('upload_preset', 'ml_default');
+        formData.append('upload_preset', 'teachers_room');
         
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => Math.min(prev + 10, 90));
@@ -396,7 +393,6 @@ export default function GeneratorPage() {
           subjectInfo,
           documentLanguage,
           includeWatermark,
-          includeImages,
           contentStyle: selectedContentLabel,
           designStyle: selectedDesignLabel,
           pageFrame: selectedFrameLabel,
@@ -821,7 +817,7 @@ export default function GeneratorPage() {
                   title="تغيير الصورة الشخصية"
                 >
                   {(profileImagePreview || userData?.profilePic) ? (
-                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.firstName || 'U')}&background=random` }} />
                   ) : (
                     <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
                       <User size={14} />
@@ -871,7 +867,7 @@ export default function GeneratorPage() {
                   title="تغيير الصورة الشخصية"
                 >
                   {(profileImagePreview || userData?.profilePic) ? (
-                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.firstName || 'U')}&background=random` }} />
                   ) : (
                     <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
                       <User size={24} />
@@ -1333,12 +1329,6 @@ export default function GeneratorPage() {
                 <input type="checkbox" checked={includeWatermark} onChange={e => setIncludeWatermark(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500 w-5 h-5 accent-sky-600" />
                 <Droplet size={18} className="text-sky-500" />
                 إضافة علامة مائية للمادة (Watermark)
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-300 font-bold bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/30 transition-colors hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
-                <input type="checkbox" checked={includeImages} onChange={e => setIncludeImages(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 accent-emerald-600" />
-                <ImagePlus size={18} className="text-emerald-500" />
-                مذكرة بصور (توليد رسومات ذكاء اصطناعي حسب الدرس)
               </label>
 
               <div>

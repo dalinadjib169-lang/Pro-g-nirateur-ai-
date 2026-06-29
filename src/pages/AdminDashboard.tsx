@@ -106,7 +106,7 @@ export default function AdminDashboard() {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'ml_default'); // Needs proper preset if configured, or just signature
+    formData.append('upload_preset', 'teachers_room'); // Needs proper preset if configured, or just signature
 
     // Cloudinary upload
     try {
