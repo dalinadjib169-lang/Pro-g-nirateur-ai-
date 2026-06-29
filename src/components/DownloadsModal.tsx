@@ -25,46 +25,18 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
     try {
       setDownloadingId(file.id);
 
-      // --- Android WebView (AppCreator24) Handling ---
+      // We will try using Data URIs for WebView, because form POST loses the body in Android DownloadManager
       if (isAndroidWebView) {
-        // Form POST for native Download Manager
         const reader = new FileReader();
         reader.onloadend = () => {
-          const base64data = reader.result as string;
-          
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/api/download';
-          form.style.display = 'none';
-
-          const dataInput = document.createElement('input');
-          dataInput.type = 'hidden';
-          dataInput.name = 'data';
-          dataInput.value = base64data;
-          form.appendChild(dataInput);
-
-          const filenameInput = document.createElement('input');
-          filenameInput.type = 'hidden';
-          filenameInput.name = 'filename';
-          filenameInput.value = file.name;
-          form.appendChild(filenameInput);
-
-          const contentTypeInput = document.createElement('input');
-          contentTypeInput.type = 'hidden';
-          contentTypeInput.name = 'contentType';
-          contentTypeInput.value = file.type === 'pdf' ? 'application/pdf' : 'application/msword';
-          form.appendChild(contentTypeInput);
-
-          document.body.appendChild(form);
-          form.submit();
-          
-          setTimeout(() => {
-            if (document.body.contains(form)) {
-              document.body.removeChild(form);
-            }
-            alert("تم تنزيل الملف. تفقد إشعارات التنزيل أو مجلد Downloads.");
-            setDownloadingId(null);
-          }, 1000);
+          const dataUrl = reader.result as string;
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setDownloadingId(null);
         };
         reader.onerror = () => {
           alert("حدث خطأ أثناء تحميل الملف.");
@@ -121,13 +93,8 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
         }
       }
 
-      if (isAndroidWebView) {
-         alert("عذراً، المشاركة المباشرة غير مدعومة في هذا التطبيق. يرجى تنزيل الملف ومشاركته من مدير الملفات.");
-         setDownloadingId(null);
-         return;
-      }
-
       // 2. Fallback for standard browsers: Open via Blob URL in new tab
+      // For WebView, this might not work perfectly, but we let it try
       const objectUrl = URL.createObjectURL(file.blob);
       const a = document.createElement('a');
       a.href = objectUrl;
