@@ -1,9 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAkqsGPlm3rbVXzhbqas7qxDDk060Y3cc4",
+  authDomain: "gen-lang-client-0694864679.firebaseapp.com",
+  projectId: "gen-lang-client-0694864679",
+  storageBucket: "gen-lang-client-0694864679.firebasestorage.app",
+  messagingSenderId: "233520604904",
+  appId: "1:233520604904:web:eec44d74b8d9b147094b5d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 export const maxDuration = 60; // Set max duration to 60 seconds (Vercel Hobby limit)
 
-const getApiKeys = () => {
+const getApiKeys = async () => {
   const keys: string[] = [];
   if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
   
@@ -12,8 +26,37 @@ const getApiKeys = () => {
       keys.push(process.env[key] as string);
     }
   });
+
+  try {
+    const q = query(collection(db, 'api_keys'), where('isActive', '==', true));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.key && typeof data.key === 'string') {
+        keys.push(data.key);
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching keys from Firestore:", error);
+  }
   
   return [...new Set(keys)];
+};
+
+const markKeyError = async (key: string, errorMsg: string) => {
+  try {
+    const { updateDoc } = await import('firebase/firestore');
+    const q = query(collection(db, 'api_keys'), where('key', '==', key));
+    const snapshot = await getDocs(q);
+    
+    const promises = snapshot.docs.map(docSnap => updateDoc(docSnap.ref, {
+        isActive: false,
+        error: errorMsg
+    }));
+    await Promise.all(promises);
+  } catch (error) {
+    console.error("Error marking key error in Firestore:", error);
+  }
 };
 
 let currentKeyIndex = 0;
@@ -38,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const apiKeys = getApiKeys();
+    const apiKeys = await getApiKeys();
     if (apiKeys.length === 0) {
       return res.status(500).json({ error: "No API keys configured" });
     }
@@ -123,10 +166,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let retries = Math.max(3, apiKeys.length);
     let attempts = 0;
     let lastError;
+    let failedKey = '';
 
     while (attempts < retries) {
       try {
         const apiKey = apiKeys[currentKeyIndex % apiKeys.length];
+        failedKey = apiKey; // temporarily store it in case it fails
         currentKeyIndex++;
 
         const ai = new GoogleGenAI({
@@ -158,6 +203,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         const isRateLimit = error?.status === 429 || error?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
         const isUnavailable = error?.status === 503 || error?.code === 503 || errMsg.includes('503');
+        const isAuthError = error?.status === 400 || error?.status === 403 || errMsg.includes('API_KEY_INVALID');
+
+        if (isRateLimit || isAuthError) {
+          // Mark the key in Firestore
+          await markKeyError(failedKey, errMsg.substring(0, 100));
+        }
 
         if (isRateLimit) {
           if (attempts >= apiKeys.length) {

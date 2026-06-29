@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { db, auth } from '../lib/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, UserData } from '../contexts/AuthContext';
-import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit } from 'lucide-react';
+import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit, Plus, RefreshCw } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 
 export default function AdminDashboard() {
@@ -14,6 +14,9 @@ export default function AdminDashboard() {
   // Settings state
   const [profilePic, setProfilePic] = useState(userData?.profilePic || '');
   const [newPassword, setNewPassword] = useState('');
+
+  const [keys, setKeys] = useState<any[]>([]);
+  const [codes, setCodes] = useState<any[]>([]);
 
   const fetchUsers = async () => {
     try {
@@ -30,8 +33,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchKeys = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'api_keys'));
+      const keysData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        keysData.push({ id: doc.id, ...doc.data() });
+      });
+      setKeys(keysData);
+    } catch (error) {
+      console.error('Error fetching keys:', error);
+    }
+  };
+
+  const fetchCodes = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'activation_codes'));
+      const codesData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        codesData.push({ id: doc.id, ...doc.data() });
+      });
+      setCodes(codesData);
+    } catch (error) {
+      console.error('Error fetching codes:', error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchKeys();
+    fetchCodes();
   }, []);
 
   const handleUpdateGenerations = async (uid: string, newAmount: number) => {
@@ -106,6 +137,81 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Password change error:', error);
       alert('خطأ في تغيير كلمة السر. قد تحتاج لتسجيل الدخول مجدداً.');
+    }
+  };
+
+  const handleGenerateCode = async () => {
+    try {
+      // Generate random 12-char alphanumeric code
+      const code = Math.random().toString(36).substring(2, 14).toUpperCase();
+      
+      await addDoc(collection(db, 'activation_codes'), {
+        code,
+        generations: 250,
+        isUsed: false,
+        usedBy: null,
+        createdAt: serverTimestamp()
+      });
+      fetchCodes();
+      alert(`تم توليد الكود بنجاح: ${code}`);
+    } catch (error) {
+      console.error('Error generating code:', error);
+      alert('خطأ في توليد الكود.');
+    }
+  };
+
+  const handleDeleteCode = async (id: string) => {
+    if(window.confirm('هل أنت متأكد من حذف هذا الكود؟')) {
+      try {
+        await deleteDoc(doc(db, 'activation_codes', id));
+        fetchCodes();
+      } catch (error) {
+        console.error('Error deleting code:', error);
+      }
+    }
+  };
+
+  const handleAddKey = async () => {
+    const key = window.prompt('أدخل مفتاح الـ API الجديد:');
+    if (!key) return;
+    
+    const provider = window.prompt('أدخل اسم المزود (مثال: gemini أو openai):') || 'gemini';
+
+    try {
+      await addDoc(collection(db, 'api_keys'), {
+        key,
+        provider,
+        isActive: true,
+        error: null,
+        createdAt: serverTimestamp()
+      });
+      fetchKeys();
+      alert('تم إضافة المفتاح بنجاح.');
+    } catch (error) {
+      console.error('Error adding API key:', error);
+      alert('خطأ في إضافة المفتاح.');
+    }
+  };
+
+  const handleToggleKeyStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'api_keys', id), {
+        isActive: !currentStatus
+      });
+      fetchKeys();
+    } catch (error) {
+      console.error('Error toggling key status:', error);
+    }
+  };
+
+  const handleDeleteKey = async (id: string) => {
+    if(window.confirm('هل أنت متأكد من حذف هذا المفتاح؟')) {
+      try {
+        await deleteDoc(doc(db, 'api_keys', id));
+        fetchKeys();
+      } catch (error) {
+        console.error('Error deleting key:', error);
+      }
     }
   };
 
@@ -221,6 +327,108 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'keys' && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="font-bold text-slate-800 dark:text-white">إدارة مفاتيح الـ API</h2>
+              <button onClick={handleAddKey} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                <Plus size={16} /> إضافة مفتاح
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-right text-slate-600 dark:text-slate-400">
+                <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-300">
+                  <tr>
+                    <th className="px-6 py-3">المزود</th>
+                    <th className="px-6 py-3">المفتاح</th>
+                    <th className="px-6 py-3">الحالة</th>
+                    <th className="px-6 py-3">تاريخ الإضافة</th>
+                    <th className="px-6 py-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {keys.map(key => (
+                    <tr key={key.id} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-6 py-4 font-medium text-slate-900 dark:text-white uppercase">{key.provider}</td>
+                      <td className="px-6 py-4" dir="ltr">{key.key.substring(0, 8)}...{key.key.substring(key.key.length - 4)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit ${key.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                          <span className={`w-2 h-2 rounded-full ${key.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                          {key.isActive ? 'يعمل' : (key.error || 'موقوف')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">{key.createdAt?.toDate ? key.createdAt.toDate().toLocaleDateString('ar-DZ') : ''}</td>
+                      <td className="px-6 py-4 flex justify-center gap-2">
+                        <button onClick={() => handleToggleKeyStatus(key.id, key.isActive)} className="text-slate-400 hover:text-amber-500" title="إيقاف/تفعيل">
+                          <Power size={18} />
+                        </button>
+                        <button onClick={() => handleDeleteKey(key.id)} className="text-slate-400 hover:text-red-500" title="حذف">
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {keys.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-slate-500">لا توجد مفاتيح مضافة بعد.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'codes' && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="font-bold text-slate-800 dark:text-white">أكواد التفعيل (250 توليدة)</h2>
+              <button onClick={handleGenerateCode} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                <RefreshCw size={16} /> توليد كود جديد
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-right text-slate-600 dark:text-slate-400">
+                <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-300">
+                  <tr>
+                    <th className="px-6 py-3">الكود</th>
+                    <th className="px-6 py-3">عدد التوليدات</th>
+                    <th className="px-6 py-3">الحالة</th>
+                    <th className="px-6 py-3">مستعمل بواسطة</th>
+                    <th className="px-6 py-3">تاريخ التوليد</th>
+                    <th className="px-6 py-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {codes.map(code => (
+                    <tr key={code.id} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white" dir="ltr">{code.code}</td>
+                      <td className="px-6 py-4 text-emerald-600 font-bold">+{code.generations}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${code.isUsed ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                          {code.isUsed ? 'مستعمل' : 'متاح'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">{code.usedBy || '-'}</td>
+                      <td className="px-6 py-4">{code.createdAt?.toDate ? code.createdAt.toDate().toLocaleDateString('ar-DZ') : ''}</td>
+                      <td className="px-6 py-4 flex justify-center gap-2">
+                        <button onClick={() => handleDeleteCode(code.id)} className="text-slate-400 hover:text-red-500" title="حذف">
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {codes.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-slate-500">لم يتم توليد أي كود بعد.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

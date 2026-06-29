@@ -636,11 +636,68 @@ export default function GeneratorPage() {
                   {userData?.generationsRemaining || 0}
                 </div>
               </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-3">
                 <div 
                   className={`h-2.5 rounded-full ${((userData?.generationsRemaining || 0) < 10) ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
                   style={{ width: `${Math.min(100, ((userData?.generationsRemaining || 0) / 300) * 100)}%` }}
                 ></div>
+              </div>
+              
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="أدخل كود التفعيل هنا..." 
+                  className="flex-1 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 uppercase"
+                  id="activation-code-input"
+                  dir="ltr"
+                />
+                <button 
+                  onClick={async () => {
+                    const input = document.getElementById('activation-code-input') as HTMLInputElement;
+                    const code = input.value.trim().toUpperCase();
+                    if(!code) return;
+                    
+                    try {
+                      // Dynamically import firestore to avoid bloat
+                      const { collection, getDocs, query, where, updateDoc, doc, increment } = await import('firebase/firestore');
+                      const { db } = await import('../lib/firebase');
+                      
+                      const q = query(collection(db, 'activation_codes'), where('code', '==', code), where('isUsed', '==', false));
+                      const querySnapshot = await getDocs(q);
+                      
+                      if(querySnapshot.empty) {
+                        alert('الكود غير صالح أو تم استخدامه من قبل.');
+                        return;
+                      }
+                      
+                      const codeDoc = querySnapshot.docs[0];
+                      const generationsToAdd = codeDoc.data().generations || 250;
+                      
+                      // Mark code as used
+                      await updateDoc(doc(db, 'activation_codes', codeDoc.id), {
+                        isUsed: true,
+                        usedBy: userData?.uid,
+                        usedAt: new Date()
+                      });
+                      
+                      // Add generations to user
+                      await updateDoc(doc(db, 'users', userData!.uid), {
+                        generationsRemaining: increment(generationsToAdd)
+                      });
+                      
+                      input.value = '';
+                      alert(`تم شحن رصيدك بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
+                      refreshUserData();
+                      
+                    } catch (error) {
+                      console.error('Error redeeming code:', error);
+                      alert('حدث خطأ أثناء تفعيل الكود.');
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors"
+                >
+                  تفعيل
+                </button>
               </div>
             </div>
 
