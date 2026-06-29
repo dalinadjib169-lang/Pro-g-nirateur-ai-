@@ -93,8 +93,6 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
   };
 
   const handleOpen = async (file: DownloadedFile) => {
-    if (isAndroidWebView) return; // Completely disabled in WebView
-    
     try {
       setDownloadingId(file.id);
 
@@ -121,6 +119,12 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
             }
           }
         }
+      }
+
+      if (isAndroidWebView) {
+         alert("عذراً، المشاركة المباشرة غير مدعومة في هذا التطبيق. يرجى تنزيل الملف ومشاركته من مدير الملفات.");
+         setDownloadingId(null);
+         return;
       }
 
       // 2. Fallback for standard browsers: Open via Blob URL in new tab
@@ -198,16 +202,14 @@ export default function DownloadsModal({ isOpen, onClose }: DownloadsModalProps)
                         <Download size={18} />
                       )}
                     </button>
-                    {!isAndroidWebView && (
-                      <button 
-                        onClick={() => handleOpen(file)}
-                        disabled={downloadingId === file.id}
-                        className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
-                        title="فتح / مشاركة"
-                      >
-                        <Share2 size={18} />
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleOpen(file)}
+                      disabled={downloadingId === file.id}
+                      className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center min-w-[36px]"
+                      title="فتح / مشاركة"
+                    >
+                      <Share2 size={18} />
+                    </button>
                     <button 
                       onClick={() => deleteFile(file.id)}
                       className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
