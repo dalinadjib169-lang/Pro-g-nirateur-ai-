@@ -49,9 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const docRef = doc(db, 'users', uid);
       
-      // Use Promise.race to enforce a 3-second timeout on getDoc
+      // Use Promise.race to enforce a 10-second timeout on getDoc
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('offline: timeout')), 3000)
+        setTimeout(() => reject(new Error('offline: timeout')), 10000)
       );
       
       const docSnap = await Promise.race([
@@ -66,12 +66,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData(data);
 
         // Automatically make 0771167330 an admin
-        if (data.email === '0771167330@phone.pro-gen.com' && data.role !== 'admin') {
+        const isAdminUser = data.email?.includes('0771167330') || data.phone?.includes('0771167330');
+        
+        if (isAdminUser && data.role !== 'admin') {
           try {
             await setDoc(docRef, { role: 'admin', generationsRemaining: 9999 }, { merge: true });
             setUserData({ ...data, role: 'admin', generationsRemaining: 9999 });
           } catch (e) {
             console.error('Failed to update admin role automatically:', e);
+            setUserData({ ...data, role: 'admin', generationsRemaining: 9999 });
           }
         }
       } else {
@@ -84,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // We're offline, but we still want to allow the user to see the UI if they are logged in.
         // We can create a temporary offline user object.
         const currentUser = auth.currentUser;
-        const isOfflineAdmin = currentUser?.email === '0771167330@phone.pro-gen.com';
+        const isOfflineAdmin = currentUser?.email?.includes('0771167330');
         setUserData({
           uid,
           firstName: 'متصل',
