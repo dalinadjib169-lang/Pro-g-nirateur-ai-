@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
 import { expertChatEmitter, profileModalEmitter } from '../App';
+import { uploadImage } from '../lib/cloudinary';
 
 // Simple unique ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -107,6 +108,7 @@ export default function GeneratorPage() {
   const [previewFontSize, setPreviewFontSize] = useState(16);
   const [docColor, setDocColor] = useState('#1e40af');
   const [documentLanguage, setDocumentLanguage] = useState('ar');
+  const [includeImages, setIncludeImages] = useState(false);
   const [includeWatermark, setIncludeWatermark] = useState(false);
 
   // Scaling logic
@@ -203,6 +205,7 @@ export default function GeneratorPage() {
         if (parsed.memoDomain) setMemoDomain(parsed.memoDomain);
         if (parsed.memoContent) setMemoContent(parsed.memoContent);
         if (parsed.documentLanguage) setDocumentLanguage(parsed.documentLanguage);
+        if (parsed.includeImages !== undefined) setIncludeImages(parsed.includeImages);
         if (parsed.includeWatermark !== undefined) setIncludeWatermark(parsed.includeWatermark);
         if (parsed.hasIntegration !== undefined) setHasIntegration(parsed.hasIntegration);
         if (parsed.contentStyle) setContentStyle(parsed.contentStyle);
@@ -224,6 +227,7 @@ export default function GeneratorPage() {
       memoDomain,
       memoContent,
       documentLanguage,
+      includeImages,
       includeWatermark,
       hasIntegration,
       contentStyle,
@@ -294,26 +298,18 @@ export default function GeneratorPage() {
       setIsUploadingProfile(true);
       setUploadProgress(10);
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', 'teachers_room');
-        
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => Math.min(prev + 10, 90));
         }, 500);
 
-        const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await response.json();
+        const url = await uploadImage(file);
         
         clearInterval(progressInterval);
         setUploadProgress(100);
 
-        if(data.secure_url) {
+        if(url) {
           await updateDoc(doc(db, 'users', userData.uid), {
-            profilePic: data.secure_url
+            profilePic: url
           });
           refreshUserData();
           setTimeout(() => {
@@ -689,7 +685,28 @@ export default function GeneratorPage() {
                  <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
               </div>
             </div>
-            <div className="flex flex-col shrink-0 truncate">
+            <div className="flex flex-col shrink-0 truncate justify-center">
+              {/* Profile Picture above app name */}
+              <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+                <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
+                <button 
+                  onClick={() => profileInputRef.current?.click()}
+                  className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] relative group"
+                  title="تغيير الصورة الشخصية"
+                >
+                  {(profileImagePreview || userData?.profilePic) ? (
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.firstName || 'U')}&background=random` }} />
+                  ) : (
+                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
+                      <User size={14} />
+                    </div>
+                  )}
+                </button>
+                <span className="text-[11px] md:text-xs font-semibold text-amber-100 truncate">
+                  {userData?.firstName || "مستخدم"}
+                </span>
+              </div>
+              
               <div className="hidden sm:flex items-center gap-1.5" dir="ltr">
                 <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
                   PRO GÉNÉRATEUR
@@ -702,7 +719,7 @@ export default function GeneratorPage() {
                 </h1>
                 <span className="text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
               </div>
-              <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-1 tracking-wide truncate">المساعد الذكي للأستاذ</p>
+              <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-0.5 tracking-wide truncate">المساعد الذكي للأستاذ</p>
             </div>
           </div>
 
@@ -807,28 +824,8 @@ export default function GeneratorPage() {
             
             <div className="w-px h-12 bg-amber-900/50 mx-0.5 md:mx-1"></div>
             
-            {/* User & Admin controls */}
+            {/* Admin controls */}
             <div className="flex items-center gap-1.5 md:gap-2">
-              <div className="flex flex-col items-center gap-1">
-                <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
-                <button 
-                  onClick={() => profileInputRef.current?.click()}
-                  className="w-7 h-7 md:w-9 md:h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] relative group"
-                  title="تغيير الصورة الشخصية"
-                >
-                  {(profileImagePreview || userData?.profilePic) ? (
-                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.firstName || 'U')}&background=random` }} />
-                  ) : (
-                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
-                      <User size={14} />
-                    </div>
-                  )}
-                </button>
-                <span className="text-[9px] md:text-[10px] font-semibold text-amber-200 max-w-[40px] md:max-w-[60px] truncate text-center">
-                  {userData?.firstName || "مستخدم"}
-                </span>
-              </div>
-              
               <div className="flex flex-col gap-1">
                 <button onClick={() => profileModalEmitter.dispatchEvent(new Event('open'))} className="p-1 md:p-1.5 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="تحديث الملف الشخصي">
                   <Settings size={14} />
@@ -1323,13 +1320,21 @@ export default function GeneratorPage() {
               </div>
             </div>
 
-            {/* AI Instruction Prompt & Watermark */}
+            {/* AI Instruction Prompt, Images & Watermark */}
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
-              <label className="flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-300 font-bold bg-sky-50 dark:bg-sky-900/20 p-3 rounded-xl border border-sky-100 dark:border-sky-800/30 transition-colors hover:bg-sky-100 dark:hover:bg-sky-900/40">
-                <input type="checkbox" checked={includeWatermark} onChange={e => setIncludeWatermark(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500 w-5 h-5 accent-sky-600" />
-                <Droplet size={18} className="text-sky-500" />
-                إضافة علامة مائية للمادة (Watermark)
-              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <label className="flex-1 flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-300 font-bold bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-800/30 transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/40">
+                  <input type="checkbox" checked={includeImages} onChange={e => setIncludeImages(e.target.checked)} className="rounded text-amber-600 focus:ring-amber-500 w-5 h-5 accent-amber-600" />
+                  <ImageIcon size={18} className="text-amber-500" />
+                  إدراج صور ورسومات تعليمية (مذكرة بصور)
+                </label>
+                
+                <label className="flex-1 flex items-center gap-3 cursor-pointer text-sm text-slate-700 dark:text-slate-300 font-bold bg-sky-50 dark:bg-sky-900/20 p-3 rounded-xl border border-sky-100 dark:border-sky-800/30 transition-colors hover:bg-sky-100 dark:hover:bg-sky-900/40">
+                  <input type="checkbox" checked={includeWatermark} onChange={e => setIncludeWatermark(e.target.checked)} className="rounded text-sky-600 focus:ring-sky-500 w-5 h-5 accent-sky-600" />
+                  <Droplet size={18} className="text-sky-500" />
+                  إضافة علامة مائية للمادة (Watermark)
+                </label>
+              </div>
 
               <div>
                 <label className="block text-xs font-semibold mb-2 text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">

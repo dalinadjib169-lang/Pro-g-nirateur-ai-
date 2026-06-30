@@ -4,6 +4,7 @@ import { X, Send, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { uploadImage } from '../lib/cloudinary';
 
 interface Message {
   id: string;
@@ -42,22 +43,14 @@ export const ExpertChat: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
     if (file && userData) {
       setIsUploadingAvatar(true);
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', 'teachers_room');
-
-        const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await response.json();
+        const url = await uploadImage(file);
         
-        if (data.secure_url) {
+        if (url) {
           await updateDoc(doc(db, 'users', userData.uid), {
-            expertAvatar: data.secure_url
+            expertAvatar: url
           });
-          setExpertAvatar(data.secure_url);
-          localStorage.setItem('expertAvatar', data.secure_url);
+          setExpertAvatar(url);
+          localStorage.setItem('expertAvatar', url);
           refreshUserData();
         }
       } catch (error) {

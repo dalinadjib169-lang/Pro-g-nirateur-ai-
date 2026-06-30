@@ -5,6 +5,7 @@ import { auth, db } from '../lib/firebase';
 import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { updatePassword } from 'firebase/auth';
 import { X, Lock, ImagePlus, User, Shield } from 'lucide-react';
+import { uploadImage } from '../lib/cloudinary';
 
 export const CompleteProfileModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { user, userData, refreshUserData } = useAuth();
@@ -99,23 +100,16 @@ export const CompleteProfileModal: React.FC<{ isOpen: boolean; onClose: () => vo
     if (!file || !userData) return;
 
     setIsUploadingAvatar(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'teachers_room');
 
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      if (data.secure_url) {
+      const url = await uploadImage(file);
+      if (url) {
         // Save to general settings
-        await setDoc(doc(db, 'settings', 'general'), { expertAvatar: data.secure_url }, { merge: true });
+        await setDoc(doc(db, 'settings', 'general'), { expertAvatar: url }, { merge: true });
         // Also save to local storage as fallback
-        localStorage.setItem('expertAvatar', data.secure_url);
+        localStorage.setItem('expertAvatar', url);
         // And update admin's document so the app reacts (if they are the admin)
-        await updateDoc(doc(db, 'users', userData.uid), { expertAvatar: data.secure_url });
+        await updateDoc(doc(db, 'users', userData.uid), { expertAvatar: url });
         await refreshUserData();
         alert('تم تحديث صورة الخبير التربوي بنجاح');
       }

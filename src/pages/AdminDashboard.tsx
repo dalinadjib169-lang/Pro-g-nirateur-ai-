@@ -5,6 +5,7 @@ import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp
 import { useAuth, UserData } from '../contexts/AuthContext';
 import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit, Plus, RefreshCw, Home } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
+import { uploadImage } from '../lib/cloudinary';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -104,22 +105,13 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'teachers_room'); // Needs proper preset if configured, or just signature
-
-    // Cloudinary upload
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      if(data.secure_url) {
-        setProfilePic(data.secure_url);
+      const url = await uploadImage(file);
+      if(url) {
+        setProfilePic(url);
         if(userData?.uid) {
           await updateDoc(doc(db, 'users', userData.uid), {
-            profilePic: data.secure_url
+            profilePic: url
           });
         }
       }

@@ -6,53 +6,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
 import { profileModalEmitter } from '../App';
 
-export const uploadToCloudinary = async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
-  const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
-  
-  if (!cloudName || !uploadPreset) {
-    console.warn("Cloudinary not configured. Falling back to base64.");
-    return new Promise((resolve) => {
-      if (onProgress) onProgress(50);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (onProgress) onProgress(100);
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
-    
-    if (onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = (e.loaded / e.total) * 100;
-          onProgress(percentComplete);
-        }
-      };
-    }
-
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        const response = JSON.parse(xhr.responseText);
-        resolve(response.secure_url);
-      } else {
-        reject(new Error('Upload failed'));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error'));
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    xhr.send(formData);
-  });
-};
+import { uploadImage } from '../lib/cloudinary';
 
 interface Teacher {
   uid: string;
@@ -117,17 +71,8 @@ export const TeachersRoom: React.FC = () => {
     if (!file) return;
     setIsUploadingBanner(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', 'teachers_room');
-      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      if (data.secure_url) {
-        await setDoc(doc(db, 'settings', 'general'), { roomBanner: data.secure_url }, { merge: true });
-      }
+      const url = await uploadImage(file);
+      await setDoc(doc(db, 'settings', 'general'), { roomBanner: url }, { merge: true });
     } catch (err) {
       console.error(err);
       alert('فشل رفع صورة القاعة');
@@ -338,7 +283,7 @@ export const TeachersRoom: React.FC = () => {
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      const url = await uploadToCloudinary(file, setUploadProgress);
+      const url = await uploadImage(file, setUploadProgress);
       await addDoc(collection(db, 'chat_sessions', chatSession.id, 'messages'), {
         chatId: chatSession.id,
         senderId: userData.uid,
@@ -372,11 +317,8 @@ export const TeachersRoom: React.FC = () => {
             className="relative flex items-center justify-center w-16 h-16 rounded-full bg-slate-900 border-2 border-white/20 shadow-2xl overflow-hidden"
             title="قاعة الأساتذة"
           >
-            {userData.profilePic ? (
-              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.firstName || 'U')}&background=random` }} />
-            ) : (
-              <User size={28} className="text-white" />
-            )}
+            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=200&auto=format&fit=crop" alt="قاعة الأساتذة" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            
             {/* Overlay Icon */}
             <div className="absolute bottom-0 right-0 bg-indigo-500 rounded-full p-1 border-2 border-slate-900">
               <MessageCircle size={14} className="text-white" />
@@ -434,17 +376,15 @@ export const TeachersRoom: React.FC = () => {
                 // Teachers List
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
                   {/* Room Banner */}
-                  {(roomBanner || (userData?.email === 'dalinadjib1990@gmail.com' || userData?.role === 'admin')) && (
-                    <div className="mb-4 relative rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 h-32 group">
-                      {roomBanner ? (
-                        <img src={roomBanner} alt="تجمع الأساتذة" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-bold">
-                          صورة قاعة الأساتذة العامة
-                        </div>
-                      )}
-                      
-                      {/* Banner overlay gradient */}
+                  <div className="mb-4 relative rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 h-32 group">
+                    <img 
+                      src={roomBanner || "https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=800&auto=format&fit=crop"} 
+                      alt="تجمع الأساتذة" 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer" 
+                    />
+                    
+                    {/* Banner overlay gradient */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                       <div className="absolute bottom-3 right-3 text-white font-bold text-sm">
                         قاعة الأساتذة العامة
@@ -467,8 +407,7 @@ export const TeachersRoom: React.FC = () => {
                         </>
                       )}
                     </div>
-                  )}
-
+                  
                   <div className="mb-4">
                     <div className="relative">
                       <input 
