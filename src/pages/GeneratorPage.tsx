@@ -341,7 +341,7 @@ export default function GeneratorPage() {
       return;
     }
 
-    if (userData.generationsRemaining <= 0) {
+    if (userData.role !== 'admin' && userData.generationsRemaining <= 0) {
       alert('عذراً، لقد استنفدت عدد التوليدات المتاحة لك. الرجاء التواصل مع الإدارة لتجديد الاشتراك.');
       return;
     }
@@ -423,17 +423,19 @@ export default function GeneratorPage() {
       setGeneratedHtml(safeHtml);
       
       // Update generation quota in Firestore
-      try {
-        const { doc, updateDoc, increment } = await import('firebase/firestore');
-        const { db } = await import('../lib/firebase');
-        const userRef = doc(db, 'users', userData.uid);
-        await updateDoc(userRef, {
-          generationsRemaining: increment(-1),
-          totalGenerations: increment(1)
-        });
-        refreshUserData();
-      } catch (err) {
-        console.error('Error updating quota:', err);
+      if (userData.role !== 'admin') {
+        try {
+          const { doc, updateDoc, increment } = await import('firebase/firestore');
+          const { db } = await import('../lib/firebase');
+          const userRef = doc(db, 'users', userData.uid);
+          await updateDoc(userRef, {
+            generationsRemaining: increment(-1),
+            totalGenerations: increment(1)
+          });
+          refreshUserData();
+        } catch (err) {
+          console.error('Error updating quota:', err);
+        }
       }
 
       if (soundEnabled) soundManager.playGenerateComplete();
@@ -674,13 +676,43 @@ export default function GeneratorPage() {
         
         <div className="container mx-auto flex justify-between items-center gap-1 md:gap-2 relative z-10">
           {/* Logo Section */}
-          <div className="flex flex-col shrink-0 gap-1.5 md:gap-2">
-            {/* Profile Picture above the logo and app name */}
-            <div className="flex items-center gap-1.5 md:gap-2 px-1">
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 relative overflow-hidden rounded-xl p-1">
+            <div className="absolute inset-0 animate-shine-sweep mix-blend-overlay opacity-80 z-20"></div>
+            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
+              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30">
+                 <img src="/icon.png" alt="Logo" className="w-full h-full object-cover rounded-[10px] hidden group-hover:block" onError={(e) => e.currentTarget.style.display = 'none'} />
+                 <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
+              </div>
+            </div>
+            <div className="flex flex-col shrink-0 truncate justify-center">
+              <div className="hidden sm:flex items-center gap-1.5" dir="ltr">
+                <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
+                  PRO GÉNÉRATEUR
+                </h1>
+                <span className="text-lg drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
+              </div>
+              <div className="sm:hidden flex items-center gap-1" dir="ltr">
+                <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
+                  PRO AI
+                </h1>
+                <span className="text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
+              </div>
+              <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-0.5 tracking-wide truncate">المساعد الذكي للأستاذ</p>
+            </div>
+          </div>
+
+          {/* Actions Section */}
+          <div className="flex items-center gap-2 md:gap-4 shrink-0 py-1">
+            
+            {/* Profile Picture */}
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <span className="hidden sm:block text-[11px] md:text-xs font-semibold text-amber-100 truncate max-w-[80px]">
+                {userData?.firstName || "مستخدم"}
+              </span>
               <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
               <button 
                 onClick={() => profileInputRef.current?.click()}
-                className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] relative group"
+                className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] relative group"
                 title="تغيير الصورة الشخصية"
               >
                 {(profileImagePreview || userData?.profilePic) ? (
@@ -691,40 +723,8 @@ export default function GeneratorPage() {
                   </div>
                 )}
               </button>
-              <span className="text-[11px] md:text-xs font-semibold text-amber-100 truncate">
-                {userData?.firstName || "مستخدم"}
-              </span>
             </div>
 
-            <div className="flex items-center gap-1.5 md:gap-3 shrink-0 relative overflow-hidden rounded-xl p-1">
-              <div className="absolute inset-0 animate-shine-sweep mix-blend-overlay opacity-80 z-20"></div>
-              <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
-                <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30">
-                   <img src="/icon.png" alt="Logo" className="w-full h-full object-cover rounded-[10px] hidden group-hover:block" onError={(e) => e.currentTarget.style.display = 'none'} />
-                   <span className="text-lg md:text-xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
-                </div>
-              </div>
-              <div className="flex flex-col shrink-0 truncate justify-center">
-                <div className="hidden sm:flex items-center gap-1.5" dir="ltr">
-                  <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
-                    PRO GÉNÉRATEUR
-                  </h1>
-                  <span className="text-lg drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
-                </div>
-                <div className="sm:hidden flex items-center gap-1" dir="ltr">
-                  <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
-                    PRO AI
-                  </h1>
-                  <span className="text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
-                </div>
-                <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-0.5 tracking-wide truncate">المساعد الذكي للأستاذ</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions Section */}
-          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 py-1">
-            
             {/* Grid for stacking tool buttons */}
             <div className="grid grid-rows-2 grid-flow-col gap-1 md:gap-1.5 items-center">
               <button 
@@ -885,35 +885,38 @@ export default function GeneratorPage() {
             </div>
 
             {/* Quota Progress Bar */}
-            <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div className="flex justify-between items-end mb-2">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">التوليدات المتبقية</h3>
-                  <p className="text-xs text-slate-500">رصيد حسابك الحالي</p>
-                </div>
-                <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 font-mono">
-                  {userData?.generationsRemaining || 0}
-                </div>
+            {userData?.role === 'admin' ? (
+              <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                  حساب مسؤول - رصيد غير محدود
+                </h3>
               </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-3">
-                <div 
-                  className={`h-2.5 rounded-full ${((userData?.generationsRemaining || 0) < 10) ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
-                  style={{ width: `${Math.min(100, ((userData?.generationsRemaining || 0) / 300) * 100)}%` }}
-                ></div>
-              </div>
-              
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="أدخل كود التفعيل هنا..." 
-                  className="flex-1 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 uppercase"
-                  id="activation-code-input"
-                  dir="ltr"
-                />
-                <button 
-                  onClick={async () => {
-                    const input = document.getElementById('activation-code-input') as HTMLInputElement;
-                    const code = input.value.trim().toUpperCase();
+            ) : (
+              <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex justify-center items-center mb-2">
+                  <h3 className="text-sm font-bold text-red-600 dark:text-red-400">
+                    لترقية حسابك اتصل بالمطور
+                  </h3>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-3">
+                  <div 
+                    className="h-2.5 rounded-full bg-red-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, ((userData?.generationsRemaining || 0) / Math.max(1, (userData?.generationsRemaining || 0) + (userData?.totalGenerations || 0))) * 100)}%` }}
+                  ></div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="أدخل كود التفعيل هنا..." 
+                    className="flex-1 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 uppercase"
+                    id="activation-code-input"
+                    dir="ltr"
+                  />
+                  <button 
+                    onClick={async () => {
+                      const input = document.getElementById('activation-code-input') as HTMLInputElement;
+                      const code = input.value.trim().toUpperCase();
                     if(!code) return;
                     
                     try {
@@ -959,6 +962,7 @@ export default function GeneratorPage() {
                 </button>
               </div>
             </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
@@ -1036,7 +1040,6 @@ export default function GeneratorPage() {
                 { id: 'test', icon: FileSpreadsheet, label: 'اختبار/فرض', bg: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400', shadowColor: 'rgba(244, 63, 94, 0.5)' },
                 { id: 'series', icon: ListTodo, label: 'سلسلة تمارين', bg: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', shadowColor: 'rgba(16, 185, 129, 0.5)' },
                 { id: 'summary', icon: Layers, label: 'ملخص', bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', shadowColor: 'rgba(245, 158, 11, 0.5)' },
-                { id: 'visual', icon: ImageIcon, label: 'مذكرة بالصور', bg: 'bg-fuchsia-500', text: 'text-fuchsia-600 dark:text-fuchsia-400', shadowColor: 'rgba(217, 70, 239, 0.5)' },
               ].map(tab => (
                 <button 
                   key={tab.id}

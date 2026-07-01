@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import { AlertCircle } from 'lucide-react';
 import LoadingScreen from './components/LoadingScreen';
 import { TeachersRoom } from './components/TeachersRoom';
+import { InstallPWA } from './components/InstallPWA';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -126,6 +127,7 @@ function AppRoutes() {
       <TeachersRoom />
       <ExpertChat isOpen={isExpertChatOpen} onClose={() => setIsExpertChatOpen(false)} />
       <CompleteProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
+      <InstallPWA />
     </>
   );
 }

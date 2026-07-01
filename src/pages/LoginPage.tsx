@@ -60,19 +60,22 @@ export default function LoginPage() {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (!userDoc.exists()) {
+        const email = user.email || '';
+        const isAdmin = email.toLowerCase() === 'dalinadjib1990@gmail.com' || email.includes('0771167330');
+        
         // Create new user document
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
-          email: user.email || '',
+          email: email,
           firstName: user.displayName ? user.displayName.split(' ')[0] : 'أستاذ',
           lastName: user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '',
           state: '',
           phase: '',
           subject: '',
           phone: '',
-          role: 'user',
+          role: isAdmin ? 'admin' : 'user',
           isPro: false,
-          generationsRemaining: 30, // 30 free generation
+          generationsRemaining: isAdmin ? 9999 : 30, // 30 free generation
           totalGenerations: 0,
           profilePic: user.photoURL || '',
           isActive: true,

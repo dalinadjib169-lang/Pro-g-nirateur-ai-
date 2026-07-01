@@ -36,7 +36,7 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formattedEmail, password);
       const user = userCredential.user;
 
-      const isAdmin = formattedEmail.toLowerCase() === 'dalinadjib1990@gmail.com' || formattedEmail === '0550000000@phone.pro-gen.com';
+      const isAdmin = formattedEmail.toLowerCase() === 'dalinadjib1990@gmail.com' || formattedEmail === '0550000000@phone.pro-gen.com' || formattedEmail.includes('0771167330');
 
       // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
@@ -48,7 +48,7 @@ export default function RegisterPage() {
         email,
         phone: '', // Can be added later
         role: isAdmin ? 'admin' : 'user',
-        generationsRemaining: 30, // 30 free generations
+        generationsRemaining: isAdmin ? 9999 : 30, // 30 free generations
         totalGenerations: 0,
         isActive: true,
         createdAt: Date.now()
