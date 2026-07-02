@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { Eye, EyeOff, UserPlus, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, AlertCircle, Brain, Mic } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function RegisterPage() {
@@ -119,7 +119,8 @@ export default function RegisterPage() {
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-1">
               <div className="w-full h-full bg-[#0a0a0a] rounded-[14px] flex items-center justify-center overflow-hidden relative">
-                 <img src="/icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[14px]" />
+                 <Brain className="w-10 h-10 text-amber-400 absolute" />
+                 <Mic className="w-5 h-5 text-amber-200 absolute bottom-2 right-2" />
               </div>
             </div>
           </div>

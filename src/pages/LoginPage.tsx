@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Eye, EyeOff, LogIn, AlertCircle, Download, Share, PlusSquare } from 'lucide-react';
+import { Eye, EyeOff, LogIn, AlertCircle, Download, Share, PlusSquare, Brain, Mic } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -46,9 +46,10 @@ export default function LoginPage() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
+        alert('تطبيقك سيثبت بعد قليل في انتظار تهيئة اعدادات هاتفك');
       }
     } else {
-      alert('لتثبيت التطبيق، يرجى فتح القائمة في متصفحك واختيار "الإضافة إلى الشاشة الرئيسية" (Add to Home screen)');
+      alert('تطبيقك سيثبت بعد قليل في انتظار تهيئة اعدادات هاتفك');
     }
   };
 
@@ -159,7 +160,8 @@ export default function LoginPage() {
           <div className="flex justify-center mb-6">
             <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-1">
               <div className="w-full h-full bg-[#0a0a0a] rounded-[22px] flex items-center justify-center overflow-hidden relative">
-                 <img src="/icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[22px]" />
+                 <Brain className="w-12 h-12 text-amber-400 absolute" />
+                 <Mic className="w-6 h-6 text-amber-200 absolute bottom-3 right-3" />
               </div>
             </div>
           </div>

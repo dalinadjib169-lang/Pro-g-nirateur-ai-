@@ -159,8 +159,10 @@ export default function AdminDashboard() {
       try {
         await deleteDoc(doc(db, 'activation_codes', id));
         fetchCodes();
-      } catch (error) {
+        alert('تم حذف الكود بنجاح');
+      } catch (error: any) {
         console.error('Error deleting code:', error);
+        alert('خطأ في حذف الكود: ' + error.message);
       }
     }
   };

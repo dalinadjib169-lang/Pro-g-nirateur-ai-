@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Share, PlusSquare } from 'lucide-react';
+import { Download, X, Share, PlusSquare, Brain, Mic } from 'lucide-react';
 
 export function InstallPWA() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -52,7 +52,7 @@ export function InstallPWA() {
       setShowInstallBanner(false);
     } else {
       // If no prompt, just close or show a message (handled by UI below)
-      alert('لتثبيت التطبيق، يرجى فتح القائمة في متصفحك واختيار "الإضافة إلى الشاشة الرئيسية" (Add to Home screen)');
+      alert('تطبيقك سيثبت بعد قليل في انتظار تهيئة اعدادات هاتفك');
     }
   };
 
@@ -71,8 +71,9 @@ export function InstallPWA() {
         </button>
         
         <div className="w-28 h-28 mb-6 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-1 relative">
-          <div className="w-full h-full bg-[#0a0a0a] rounded-[22px] flex items-center justify-center overflow-hidden">
-             <img src="/icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[22px]" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <div className="w-full h-full bg-[#0a0a0a] rounded-[22px] flex items-center justify-center overflow-hidden relative">
+             <Brain className="w-14 h-14 text-amber-400 absolute" />
+             <Mic className="w-7 h-7 text-amber-200 absolute bottom-3 right-3" />
           </div>
         </div>
 

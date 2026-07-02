@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Settings, Image as ImageIcon, X } from 'lucide-react';
+import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Settings, Image as ImageIcon, X, Brain, Mic } from 'lucide-react';
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
@@ -679,9 +679,10 @@ export default function GeneratorPage() {
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0 relative overflow-hidden rounded-xl p-1">
             <div className="absolute inset-0 animate-shine-sweep mix-blend-overlay opacity-80 z-20"></div>
             <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
-              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30">
-                 <img src="/icon.png" alt="Logo" className="w-full h-full object-cover rounded-[10px] hidden group-hover:block" onError={(e) => e.currentTarget.style.display = 'none'} />
-                 <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
+              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30 relative">
+                 <Brain className="w-5 h-5 md:w-8 md:h-8 text-amber-400 absolute group-hover:hidden" />
+                 <Mic className="w-3 h-3 md:w-4 md:h-4 text-amber-200 absolute bottom-1 right-1 group-hover:hidden" />
+                 <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent hidden group-hover:block">AI</span>
               </div>
             </div>
             <div className="flex flex-col shrink-0 truncate justify-center">
@@ -924,15 +925,20 @@ export default function GeneratorPage() {
                       const { collection, getDocs, query, where, updateDoc, doc, increment } = await import('firebase/firestore');
                       const { db } = await import('../lib/firebase');
                       
-                      const q = query(collection(db, 'activation_codes'), where('code', '==', code), where('isUsed', '==', false));
+                      const q = query(collection(db, 'activation_codes'), where('code', '==', code));
                       const querySnapshot = await getDocs(q);
                       
                       if(querySnapshot.empty) {
-                        alert('الكود غير صالح أو تم استخدامه من قبل.');
+                        alert('الكود غير صالح (غير موجود). تأكد من صحة الكود.');
                         return;
                       }
                       
                       const codeDoc = querySnapshot.docs[0];
+                      if(codeDoc.data().isUsed) {
+                        alert('هذا الكود تم استخدامه من قبل.');
+                        return;
+                      }
+                      
                       const generationsToAdd = codeDoc.data().generations || 250;
                       
                       // Mark code as used
@@ -951,9 +957,9 @@ export default function GeneratorPage() {
                       alert(`تم شحن رصيدك بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
                       refreshUserData();
                       
-                    } catch (error) {
+                    } catch (error: any) {
                       console.error('Error redeeming code:', error);
-                      alert('حدث خطأ أثناء تفعيل الكود.');
+                      alert('حدث خطأ أثناء تفعيل الكود: ' + error.message);
                     }
                   }}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors"

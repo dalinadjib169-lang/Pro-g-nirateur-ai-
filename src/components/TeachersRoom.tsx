@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles, Settings, ImagePlus } from 'lucide-react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles, Settings, ImagePlus, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
@@ -431,7 +431,9 @@ export const TeachersRoom: React.FC = () => {
                           {userData?.expertAvatar || localStorage.getItem('expertAvatar') ? (
                             <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="الخبير التربوي" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
-                            <img src="/icon.png" alt="الخبير التربوي" className="w-full h-full object-cover" />
+                            <div className="w-full h-full bg-[#0a0a0a] flex items-center justify-center relative">
+                              <Brain className="w-6 h-6 text-amber-400" />
+                            </div>
                           )}
                         </div>
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800 z-10"></div>
