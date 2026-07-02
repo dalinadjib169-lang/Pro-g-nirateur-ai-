@@ -947,22 +947,38 @@ export default function GeneratorPage() {
                   <button 
                     onClick={async () => {
                       const input = document.getElementById('activation-code-input') as HTMLInputElement;
-                      const rawCode = input.value.toUpperCase();
-                      const code = rawCode.replace(/[^A-Z0-9]/g, ''); // Strip all symbols including hyphens
-                    if(!code) return;
+                      const rawCode = input.value.toUpperCase().trim();
+                      const normalizedInput = rawCode.replace(/[^A-Z0-9]/g, '');
+                      if(!normalizedInput) return;
                     
                     setIsActivatingCode(true);
                     try {
-                      const q = query(collection(db, 'activation_codes'), where('code', '==', code));
-                      const querySnapshot = await getDocs(q);
+                      // 1. Try exact match
+                      let querySnapshot = await getDocs(query(collection(db, 'activation_codes'), where('code', '==', rawCode)));
                       
-                      if(querySnapshot.empty) {
+                      // 2. Try match with stripped symbols
+                      if (querySnapshot.empty && rawCode !== normalizedInput) {
+                        querySnapshot = await getDocs(query(collection(db, 'activation_codes'), where('code', '==', normalizedInput)));
+                      }
+
+                      let codeDoc = null;
+                      if (!querySnapshot.empty) {
+                        codeDoc = querySnapshot.docs[0];
+                      } else {
+                        // 3. Fallback: Search all unused codes manually to bypass any DB formatting mismatches
+                        const allUnusedCodes = await getDocs(query(collection(db, 'activation_codes'), where('isUsed', '==', false)));
+                        codeDoc = allUnusedCodes.docs.find(doc => {
+                          const dbCode = doc.data().code || '';
+                          return dbCode.toUpperCase().replace(/[^A-Z0-9]/g, '') === normalizedInput;
+                        });
+                      }
+                      
+                      if(!codeDoc) {
                         alert('الكود غير صالح (غير موجود). تأكد من صحة الكود وتأكد من عدم الخلط بين حرف O ورقم 0.');
                         setIsActivatingCode(false);
                         return;
                       }
                       
-                      const codeDoc = querySnapshot.docs[0];
                       const codeData = codeDoc.data();
                       
                       if(codeData.isUsed) {
