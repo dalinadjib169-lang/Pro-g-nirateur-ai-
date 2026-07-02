@@ -424,9 +424,9 @@ export default function AdminDashboard() {
         {activeTab === 'codes' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <h2 className="font-bold text-slate-800 dark:text-white">أكواد التفعيل (250 توليدة)</h2>
-              <button onClick={handleGenerateCode} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                <RefreshCw size={16} /> توليد كود جديد
+              <h2 className="font-bold text-slate-800 dark:text-white">أكواد تفعيل الوضع الاحترافي (Pro)</h2>
+              <button onClick={handleGenerateCode} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-bold">
+                <RefreshCw size={16} /> توليد كود Pro جديد
               </button>
             </div>
             <div className="overflow-x-auto">
@@ -434,7 +434,7 @@ export default function AdminDashboard() {
                 <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-300">
                   <tr>
                     <th className="px-6 py-3">الكود</th>
-                    <th className="px-6 py-3">عدد التوليدات</th>
+                    <th className="px-6 py-3">النوع / التوليدات</th>
                     <th className="px-6 py-3">الحالة</th>
                     <th className="px-6 py-3">مستعمل بواسطة</th>
                     <th className="px-6 py-3">تاريخ التوليد</th>
@@ -455,7 +455,10 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-emerald-600 font-bold">+{code.generations}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-indigo-600 font-bold ml-2">{code.type === 'pro' ? 'PRO' : 'عادي'}</span>
+                        <span className="text-emerald-600 font-bold">+{code.generations}</span>
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs ${code.isUsed ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
                           {code.isUsed ? 'مستعمل' : 'متاح'}
