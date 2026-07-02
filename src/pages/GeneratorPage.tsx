@@ -5,7 +5,7 @@ import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, getDocs, query, where, increment } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
@@ -425,8 +425,6 @@ export default function GeneratorPage() {
       // Update generation quota in Firestore
       if (userData.role !== 'admin') {
         try {
-          const { doc, updateDoc, increment } = await import('firebase/firestore');
-          const { db } = await import('../lib/firebase');
           const userRef = doc(db, 'users', userData.uid);
           await updateDoc(userRef, {
             generationsRemaining: increment(-1),
@@ -921,10 +919,6 @@ export default function GeneratorPage() {
                     if(!code) return;
                     
                     try {
-                      // Dynamically import firestore to avoid bloat
-                      const { collection, getDocs, query, where, updateDoc, doc, increment } = await import('firebase/firestore');
-                      const { db } = await import('../lib/firebase');
-                      
                       const q = query(collection(db, 'activation_codes'), where('code', '==', code));
                       const querySnapshot = await getDocs(q);
                       

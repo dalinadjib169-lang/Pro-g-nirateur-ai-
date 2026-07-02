@@ -4,7 +4,7 @@ import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, Check
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
-import { profileModalEmitter } from '../App';
+import { expertChatEmitter, profileModalEmitter } from '../App';
 
 import { uploadImage } from '../lib/cloudinary';
 
@@ -422,7 +422,7 @@ export const TeachersRoom: React.FC = () => {
                   <div className="mb-4">
                     <button 
                       onClick={() => {
-                        import('../App').then(m => m.expertChatEmitter.dispatchEvent(new Event('open')));
+                        expertChatEmitter.dispatchEvent(new Event('open'));
                       }}
                       className="w-full flex items-center gap-3 p-3 bg-gradient-to-l from-amber-500/10 to-yellow-600/10 hover:from-amber-500/20 hover:to-yellow-600/20 rounded-xl border border-amber-500/30 transition-all text-right group"
                     >
