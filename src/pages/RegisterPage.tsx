@@ -124,7 +124,7 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-yellow-600 font-['Space_Grotesk'] mb-2">PRO GÉNÉRATEUR AI</h1>
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-300 via-emerald-400 to-indigo-500 font-['Cairo'] mb-2">المربي DZ</h1>
           <p className="text-slate-500 dark:text-slate-400">إنشاء حساب جديد</p>
         </div>
 

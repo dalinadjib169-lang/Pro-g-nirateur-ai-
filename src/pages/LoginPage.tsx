@@ -165,7 +165,7 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-yellow-600 font-['Space_Grotesk'] mb-2 tracking-tight">PRO GÉNÉRATEUR AI</h1>
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-300 via-emerald-400 to-indigo-500 font-['Cairo'] mb-2 tracking-tight">المربي DZ</h1>
           <p className="text-slate-500 dark:text-slate-400">مرحباً بك مجدداً</p>
         </div>
 

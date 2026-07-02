@@ -70,15 +70,15 @@ export function InstallPWA() {
           <X size={20} />
         </button>
         
-        <div className="w-28 h-28 mb-6 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-1 relative">
-          <div className="w-full h-full bg-[#0a0a0a] rounded-[22px] flex items-center justify-center overflow-hidden relative">
-             <Brain className="w-14 h-14 text-amber-400 absolute" />
-             <Mic className="w-7 h-7 text-amber-200 absolute bottom-3 right-3" />
+        <div className="w-28 h-28 mb-6 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-indigo-600 p-1 relative">
+          <div className="w-full h-full bg-[#0a0a0a] rounded-[22px] flex items-center justify-center overflow-hidden relative border border-teal-500/30">
+             <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-teal-400 absolute"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-300 absolute bottom-3 right-3"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
           </div>
         </div>
 
-        <h2 className="text-2xl font-black bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent mb-2 text-center">
-          PRO GÉNÉRATEUR AI
+        <h2 className="text-2xl font-black bg-gradient-to-l from-emerald-300 via-teal-400 to-indigo-400 bg-clip-text text-transparent mb-2 text-center font-['Cairo']">
+          المربي DZ
         </h2>
         
         <div className="text-slate-300 text-center mb-8 text-sm leading-relaxed space-y-3">
