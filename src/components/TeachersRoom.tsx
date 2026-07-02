@@ -106,7 +106,7 @@ export const TeachersRoom: React.FC = () => {
           phase: 'الجميع',
           subject: 'المطور',
           isOnline: true,
-          profilePic: '/icon.png'
+          profilePic: ''
         });
       }
 
