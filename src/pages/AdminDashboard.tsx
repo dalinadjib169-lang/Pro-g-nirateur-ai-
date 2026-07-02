@@ -146,10 +146,10 @@ export default function AdminDashboard() {
       // Generate random alphanumeric code without ambiguous characters (O, 0, I, 1, L)
       const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
       let randomPart = '';
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 8; i++) {
         randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      const code = `PRO${randomPart}`;
+      const code = `PRO-${randomPart.substring(0, 4)}-${randomPart.substring(4, 8)}`;
       
       await addDoc(collection(db, 'activation_codes'), {
         code,

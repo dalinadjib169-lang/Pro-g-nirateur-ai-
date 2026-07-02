@@ -353,7 +353,7 @@ export default function GeneratorPage() {
       return;
     }
 
-    if (userData.role !== 'admin' && userData.generationsRemaining <= 0) {
+    if (userData.role !== 'admin' && (userData.generationsRemaining || 0) <= 0) {
       alert('عذراً، لقد استنفدت عدد التوليدات المتاحة لك. الرجاء التواصل مع الإدارة لتجديد الاشتراك.');
       return;
     }
@@ -949,7 +949,10 @@ export default function GeneratorPage() {
                       const input = document.getElementById('activation-code-input') as HTMLInputElement;
                       const rawCode = input.value.toUpperCase().trim();
                       const normalizedInput = rawCode.replace(/[^A-Z0-9]/g, '');
-                      if(!normalizedInput) return;
+                      if(!normalizedInput) {
+                        alert('الرجاء إدخال كود التفعيل أولاً.');
+                        return;
+                      }
                     
                     setIsActivatingCode(true);
                     try {
