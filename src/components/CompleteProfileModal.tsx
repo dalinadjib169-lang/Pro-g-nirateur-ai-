@@ -102,7 +102,19 @@ export const CompleteProfileModal: React.FC<{ isOpen: boolean; onClose: () => vo
     setIsUploadingAvatar(true);
 
     try {
-      const url = await uploadImage(file);
+      let url;
+      try {
+        url = await uploadImage(file);
+      } catch (uploadError) {
+        console.warn("Firebase upload failed for expert avatar, falling back to base64:", uploadError);
+        url = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = (e) => reject(e);
+          reader.readAsDataURL(file);
+        });
+      }
+      
       if (url) {
         // Save to general settings
         await setDoc(doc(db, 'settings', 'general'), { expertAvatar: url }, { merge: true });

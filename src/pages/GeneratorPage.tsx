@@ -299,7 +299,19 @@ export default function GeneratorPage() {
           setUploadProgress(prev => Math.min(prev + 10, 90));
         }, 500);
 
-        const url = await uploadImage(file);
+        let url;
+        try {
+          url = await uploadImage(file);
+        } catch (uploadError) {
+          console.warn("Firebase upload failed, falling back to base64:", uploadError);
+          // Fallback to base64 if Firebase storage fails (e.g., due to rules)
+          url = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = (e) => reject(e);
+            reader.readAsDataURL(file);
+          });
+        }
         
         clearInterval(progressInterval);
         setUploadProgress(100);
