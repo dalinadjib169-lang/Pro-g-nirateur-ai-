@@ -421,6 +421,7 @@ export default function GeneratorPage() {
 
       const decoder = new TextDecoder();
       let streamedHtml = '';
+      let lastRenderTime = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -429,9 +430,13 @@ export default function GeneratorPage() {
         const chunk = decoder.decode(value, { stream: true });
         streamedHtml += chunk;
         
-        // Show partial content (without final cleanup, just fast display)
-        let displayHtml = streamedHtml.replace(/```html/gi, '').replace(/```/g, '');
-        setGeneratedHtml(displayHtml);
+        // Show partial content, throttled to avoid freezing the browser
+        const now = Date.now();
+        if (now - lastRenderTime > 300) {
+          lastRenderTime = now;
+          let displayHtml = streamedHtml.replace(/```html/gi, '').replace(/```/g, '');
+          setGeneratedHtml(displayHtml);
+        }
       }
 
       let safeHtml = streamedHtml;
@@ -942,7 +947,8 @@ export default function GeneratorPage() {
                   <button 
                     onClick={async () => {
                       const input = document.getElementById('activation-code-input') as HTMLInputElement;
-                      const code = input.value.trim().toUpperCase();
+                      const rawCode = input.value.toUpperCase();
+                      const code = rawCode.replace(/[^A-Z0-9]/g, ''); // Remove all whitespace and invalid characters
                     if(!code) return;
                     
                     setIsActivatingCode(true);

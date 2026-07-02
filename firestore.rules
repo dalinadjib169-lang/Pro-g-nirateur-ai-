@@ -25,17 +25,29 @@ service cloud.firestore {
 
     // Rules for 'users' collection
     match /users/{userId} {
-      // Users can read their own data. Admins can read all users' data.
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Users can read all users' data (needed for Teachers Room). 
+      allow read: if isAuthenticated();
       // Users can create their initial document upon registration
       allow create: if isAuthenticated() && request.auth.uid == userId;
       // Users can update their own non-sensitive data, Admins can update anything
       allow update: if isAuthenticated() && (
-        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive']))
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive', 'generationsRemaining']))
         || isAdmin()
       );
       // Only admins can delete a user
       allow delete: if isAdmin();
+    }
+
+    // Rules for 'chat_sessions' (Teachers Room)
+    match /chat_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+      
+      match /messages/{messageId} {
+        allow read, create, update: if isAuthenticated();
+        allow delete: if isAdmin() || request.auth.uid == resource.data.senderId;
+      }
     }
 
     // Rules for 'api_keys' collection

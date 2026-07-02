@@ -148,7 +148,7 @@ export const TeachersRoom: React.FC = () => {
 
   // Listen to all chat sessions to show notifications
   useEffect(() => {
-    if (!isOpen || !userData) return;
+    if (!userData) return;
     
     const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid));
     const q2 = query(collection(db, 'chat_sessions'), where('user2Id', '==', userData.uid));

@@ -15,7 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-
+export const maxDuration = 60;
 
 const getApiKeys = async () => {
   const keys: string[] = [];
