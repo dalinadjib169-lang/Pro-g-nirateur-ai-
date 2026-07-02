@@ -55,8 +55,20 @@ export default function GeneratorPage() {
         ...prev,
         firstName: prev.firstName || userData.firstName || '',
         lastName: prev.lastName || userData.lastName || '',
-        phase: prev.phase || userData.phase || ''
+        phase: prev.phase || userData.phase || '',
+        subject: prev.subject || (userData as any).subject || ''
       }));
+
+      // Detect language from subject
+      const userSubject = (userData as any).subject || '';
+      if (userSubject.includes('فرنسي') || userSubject.includes('francais') || userSubject.includes('french')) {
+        setDocumentLanguage('fr');
+      } else if (userSubject.includes('انجليزي') || userSubject.includes('english')) {
+        setDocumentLanguage('en');
+      } else {
+        // Only set default if we haven't already explicitly chosen something else, 
+        // but for now, we'll let it default to AR unless specified
+      }
     }
   }, [userData]);
   const [generationType, setGenerationType] = useState<GenerationType>('memo');
@@ -484,7 +496,7 @@ export default function GeneratorPage() {
     else if (generationType === 'series') gradient = 'from-emerald-500 via-teal-600 to-emerald-500 shadow-emerald-500/50';
     else if (generationType === 'summary') gradient = 'from-amber-500 via-orange-600 to-amber-500 shadow-amber-500/50';
     
-    return `w-full mt-6 bg-gradient-to-r ${gradient} bg-size-200 hover:bg-pos-100 text-white p-4 rounded-xl font-extrabold text-lg shadow-xl flex flex-col items-center justify-center min-h-[72px] gap-1 disabled:opacity-90 transition-all transform hover:-translate-y-1 active:scale-95 overflow-hidden relative`;
+    return `w-full mt-6 bg-gradient-to-r ${gradient} bg-size-200 hover:bg-pos-100 text-white p-4 rounded-xl font-extrabold text-lg shadow-xl flex flex-col items-center justify-center min-h-[72px] gap-1 transition-all overflow-hidden relative`;
   };
 
   const exportToPDF = async () => {
@@ -677,27 +689,24 @@ export default function GeneratorPage() {
           {/* Logo Section */}
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0 relative overflow-hidden rounded-xl p-1">
             <div className="absolute inset-0 animate-shine-sweep mix-blend-overlay opacity-80 z-20"></div>
-            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
-              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30 relative">
-                 <Brain className="w-5 h-5 md:w-8 md:h-8 text-amber-400 absolute group-hover:hidden" />
-                 <Mic className="w-3 h-3 md:w-4 md:h-4 text-amber-200 absolute bottom-1 right-1 group-hover:hidden" />
-                 <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent hidden group-hover:block">AI</span>
+            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-emerald-400 via-teal-500 to-indigo-600 p-0.5 shadow-lg shadow-teal-500/30 shrink-0 overflow-hidden group">
+              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-teal-500/30 relative">
+                 <GraduationCap className="w-5 h-5 md:w-8 md:h-8 text-teal-400 absolute group-hover:scale-110 transition-transform duration-300" />
+                 <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-emerald-300 absolute bottom-1 right-1 opacity-70 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="flex flex-col shrink-0 truncate justify-center">
-              <div className="hidden sm:flex items-center gap-1.5" dir="ltr">
-                <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
-                  PRO GÉNÉRATEUR
+            <div className="flex flex-col shrink-0 truncate justify-center ml-2">
+              <div className="hidden sm:flex items-center gap-1.5" dir="rtl">
+                <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-l from-emerald-300 via-teal-400 to-indigo-400 tracking-tight leading-none truncate font-['Cairo',sans-serif]">
+                  المربي DZ
                 </h1>
-                <span className="text-lg drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
               </div>
-              <div className="sm:hidden flex items-center gap-1" dir="ltr">
-                <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
-                  PRO AI
+              <div className="sm:hidden flex items-center gap-1" dir="rtl">
+                <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-l from-emerald-300 via-teal-400 to-indigo-400 tracking-tight leading-none truncate font-['Cairo',sans-serif]">
+                  المربي DZ
                 </h1>
-                <span className="text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
               </div>
-              <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-0.5 tracking-wide truncate">المساعد الذكي للأستاذ</p>
+              <p className="hidden sm:block text-[9px] md:text-xs text-teal-500/80 font-bold mt-0.5 tracking-wide truncate">المساعد الذكي للأستاذ</p>
             </div>
           </div>
 
@@ -807,17 +816,19 @@ export default function GeneratorPage() {
                 </button>
               </div>
 
-              <div className="hidden sm:flex items-center justify-center bg-[#1a1a1a] rounded-lg border border-amber-900/30 w-9 h-9 md:w-10 md:h-10">
+              <div className="flex items-center justify-center bg-[#1a1a1a] rounded-lg border border-teal-900/30 w-9 h-9 md:w-10 md:h-10 relative group" title="لغة إنشاء المحتوى">
                 <select 
                   value={documentLanguage} 
                   onChange={(e) => setDocumentLanguage(e.target.value)}
-                  className="bg-transparent border-none text-xs font-bold text-amber-100 outline-none w-full h-full text-center cursor-pointer appearance-none px-1"
-                  title="تغيير اللغة"
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                 >
-                  <option value="ar">AR</option>
-                  <option value="fr">FR</option>
-                  <option value="en">EN</option>
+                  <option value="ar">العربية (AR)</option>
+                  <option value="fr">الفرنسية (FR)</option>
+                  <option value="en">الإنجليزية (EN)</option>
                 </select>
+                <div className="flex items-center justify-center w-full h-full pointer-events-none text-teal-400 font-bold text-xs uppercase group-hover:text-teal-300 transition-colors">
+                  {documentLanguage}
+                </div>
               </div>
             </div>
             
@@ -999,7 +1010,17 @@ export default function GeneratorPage() {
             <div className="mb-4">
               <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider">المادة</label>
               <div className="relative">
-                <select value={teacherInfo.subject} onChange={e => setTeacherInfo({...teacherInfo, subject: e.target.value})} className="w-full pl-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow appearance-none">
+                <select value={teacherInfo.subject} onChange={e => {
+                  const newSubject = e.target.value;
+                  setTeacherInfo({...teacherInfo, subject: newSubject});
+                  if (newSubject.includes('فرنسي') || newSubject.includes('francais') || newSubject.includes('french')) {
+                    setDocumentLanguage('fr');
+                  } else if (newSubject.includes('انجليزي') || newSubject.includes('english')) {
+                    setDocumentLanguage('en');
+                  } else if (newSubject) {
+                    setDocumentLanguage('ar'); // Default back to Arabic for other subjects if they pick one
+                  }
+                }} className="w-full pl-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow appearance-none">
                   <option value="">اختر المادة...</option>
                   {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -1358,20 +1379,26 @@ export default function GeneratorPage() {
                 <button 
                   onClick={handleGenerate} 
                   disabled={isGenerating}
-                  className={getGenerateButtonClasses()}
+                  className={`${getGenerateButtonClasses()} ${isGenerating ? 'opacity-100 scale-[0.98] cursor-wait' : 'hover:-translate-y-1 active:scale-95'}`}
                   style={{ backgroundSize: '200% auto' }}
                 >
+                  {isGenerating && (
+                    <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+                       <div className="absolute -inset-[100%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#00000000_50%,#ffffff_100%)] opacity-50"></div>
+                       <div className="absolute inset-[2px] rounded-[10px] bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 backdrop-blur-xl opacity-90"></div>
+                    </div>
+                  )}
                   {isGenerating ? (
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-center gap-1 z-10 relative">
                       <div className="flex items-center gap-3">
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span>جاري التوليد الخارق...</span>
+                        <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span className="text-xl font-bold">جاري التوليد الخارق...</span>
                       </div>
                       <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center gap-3">
-                      <Zap size={22} className="fill-current" />
+                    <div className="flex items-center justify-center gap-3 z-10 relative">
+                      <Zap size={22} className="fill-current animate-pulse" />
                       توليد حصري مميز
                     </div>
                   )}

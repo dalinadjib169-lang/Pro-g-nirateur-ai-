@@ -63,8 +63,9 @@ export default function AdminDashboard() {
         return dateB - dateA;
       });
       setCodes(codesData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching codes:', error);
+      alert('خطأ في جلب الأكواد: ' + error.message);
     }
   };
 
@@ -153,7 +154,9 @@ export default function AdminDashboard() {
         createdAt: serverTimestamp()
       });
       fetchCodes();
-      alert(`تم توليد الكود بنجاح: ${code}`);
+      
+      // Use window.prompt so it's easy to copy on mobile devices
+      window.prompt('تم توليد الكود بنجاح. انسخ الكود التالي:', code);
     } catch (error) {
       console.error('Error generating code:', error);
       alert('خطأ في توليد الكود.');
