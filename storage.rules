@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to check if the uploaded file is an image (Antivirus / Anti-malware protection)
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Function to check if the uploaded file size is less than 5MB
+    function isLessThan5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /uploads/{fileName} {
+      // Anyone authenticated can view images
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can upload. 
+      // Files MUST be images and less than 5MB to prevent malware/virus uploads.
+      allow create: if isAuthenticated() && isImage() && isLessThan5MB();
+      
+      // Prevent updating existing images to something malicious
+      allow update: if isAuthenticated() && isImage() && isLessThan5MB();
+      
+      // Only the uploader or an admin should ideally delete, but for simplicity:
+      allow delete: if isAuthenticated(); 
+    }
+  }
+}

@@ -63,7 +63,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
-  const { user, userData, loading } = useAuth();
+  const { user, userData, loading, signOut } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
@@ -71,6 +71,24 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
 
   if (!user || !userData) {
     return <Navigate to="/login" />;
+  }
+
+  if (userData.isActive === false && userData.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">حساب موقوف</h2>
+          <p className="text-slate-600 mb-6">لقد تم إيقاف حسابك من قبل الإدارة لانتهاك شروط الاستخدام أو لأسباب أمنية. يرجى التواصل مع الدعم الفني.</p>
+          <button 
+            onClick={() => signOut().then(() => window.location.href = '/login')}
+            className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (requireAdmin && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com') {
