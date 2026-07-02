@@ -100,6 +100,20 @@ export default function GeneratorPage() {
   const [generatingDhikr, setGeneratingDhikr] = useState('');
 
   useEffect(() => {
+    if (!isGenerating && generatedHtml && (window as any).MathJax) {
+      setTimeout(() => {
+        try {
+          if (typeof (window as any).MathJax.typesetPromise === 'function') {
+            (window as any).MathJax.typesetPromise();
+          }
+        } catch (e) {
+          console.error("MathJax error", e);
+        }
+      }, 100);
+    }
+  }, [generatedHtml, isGenerating]);
+
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isGenerating) {
       setGeneratingDhikr(ADHKAR_LIST[Math.floor(Math.random() * ADHKAR_LIST.length)]);

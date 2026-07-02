@@ -4,16 +4,16 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAkqsGPlm3rbVXzhbqas7qxDDk060Y3cc4",
-  authDomain: "gen-lang-client-0694864679.firebaseapp.com",
-  projectId: "gen-lang-client-0694864679",
-  storageBucket: "gen-lang-client-0694864679.firebasestorage.app",
-  messagingSenderId: "233520604904",
-  appId: "1:233520604904:web:eec44d74b8d9b147094b5d"
+  apiKey: "AIzaSyA1Q_FOaIEaQdSDdxX_ov1b4ny_0O39HzU",
+  authDomain: "universal-gearbox-45xj8.firebaseapp.com",
+  projectId: "universal-gearbox-45xj8",
+  storageBucket: "universal-gearbox-45xj8.firebasestorage.app",
+  messagingSenderId: "532000019410",
+  appId: "1:532000019410:web:92f2f40ee0f11ab0af6e0b"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, "ai-studio-gnrateurpro-efc0cc4b-fcc7-4182-b47c-cf6c999d1213");
 
 export const maxDuration = 60;
 
@@ -157,6 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     أخرج كود HTML مرتب، مع استخدام flexbox للترويسة والجداول. 
     اجعل التصميم يشبه النماذج الاحترافية جداً، مزخرف على الجوانب بإطارات ورسومات، ووفر المساحة (استغل كامل عرض الورقة). لا تترك هوامش فارغة ضخمة.
+    - **ملاحظة للمواد العلمية والرياضيات**: يمكنك استخدام صيغة LaTeX لكتابة المعادلات الرياضية بدقة (سيتم تصييرها باستخدام MathJax). استخدم \`$$ معادلة $$\` للمعادلات المنفصلة، و \`\\( معادلة \\)\` للمعادلات داخل السطر.
     ${generationType === 'visual' ? `
     - **هام جدًا للمذكرة التفاعلية**: يجب أن تُصمم الصفحة كأنها قصة أو مجلة أطفال تعليمية تفاعلية، استخدم الكثير من الشخصيات الكرتونية بصيغة SVG (طلاب، معلم، حيوانات، أو أشكال معبرة) إلى جانب الفقرات.
     - اجعل الإطارات والبطاقات تحتوي على زوايا دائرية، ظلال ناعمة، وألوان مبهجة حسب الستايل المختار.

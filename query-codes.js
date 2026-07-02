@@ -12,10 +12,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-async function test() {
-  const s = await getDocs(collection(db, 'activation_codes'));
-  console.log("Size: ", s.size);
-  s.forEach(d => console.log(d.data()));
+async function checkCodes() {
+  const codesSnapshot = await getDocs(collection(db, 'activation_codes'));
+  console.log(`Found ${codesSnapshot.size} codes.`);
+  codesSnapshot.forEach(doc => {
+    console.log(doc.id, '=>', doc.data().code, 'isUsed:', doc.data().isUsed);
+  });
   process.exit(0);
 }
-test();
+
+checkCodes().catch(console.error);

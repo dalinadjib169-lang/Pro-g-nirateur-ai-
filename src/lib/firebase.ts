@@ -4,16 +4,16 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAkqsGPlm3rbVXzhbqas7qxDDk060Y3cc4",
-  authDomain: "gen-lang-client-0694864679.firebaseapp.com",
-  projectId: "gen-lang-client-0694864679",
-  storageBucket: "gen-lang-client-0694864679.firebasestorage.app",
-  messagingSenderId: "233520604904",
-  appId: "1:233520604904:web:eec44d74b8d9b147094b5d"
+  apiKey: "AIzaSyA1Q_FOaIEaQdSDdxX_ov1b4ny_0O39HzU",
+  authDomain: "universal-gearbox-45xj8.firebaseapp.com",
+  projectId: "universal-gearbox-45xj8",
+  storageBucket: "universal-gearbox-45xj8.firebasestorage.app",
+  messagingSenderId: "532000019410",
+  appId: "1:532000019410:web:92f2f40ee0f11ab0af6e0b"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
+export const db = getFirestore(app, "ai-studio-gnrateurpro-efc0cc4b-fcc7-4182-b47c-cf6c999d1213");
 export const storage = getStorage(app);
