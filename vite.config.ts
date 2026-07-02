@@ -12,6 +12,9 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['icon.png'],
+        devOptions: {
+          enabled: true
+        },
         manifest: {
           name: 'Pro Générateur AI',
           short_name: 'ProGen',

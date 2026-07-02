@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, LogIn, AlertCircle, Download, Share, PlusSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -15,6 +15,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
   
   const navigate = useNavigate();
   const { user, userData, loading: authLoading } = useAuth();
@@ -24,6 +26,31 @@ export default function LoginPage() {
       navigate('/');
     }
   }, [user, userData, authLoading, navigate]);
+
+  useEffect(() => {
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+      setIsStandalone(true);
+      return;
+    }
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert('لتثبيت التطبيق، يرجى فتح القائمة في متصفحك واختيار "الإضافة إلى الشاشة الرئيسية" (Add to Home screen)');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,8 +143,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4" dir="rtl">
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 dark:border-slate-700">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 p-4 relative" dir="rtl">
+      {!isStandalone && (
+        <button
+          onClick={handleInstallClick}
+          className="absolute top-4 right-4 bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform hover:scale-105"
+        >
+          <Download size={18} />
+          <span className="text-sm">تثبيت التطبيق</span>
+        </button>
+      )}
+      
+      <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 dark:border-slate-700 mt-8">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
             <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-1">
