@@ -6,6 +6,8 @@ export function InstallPWA() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isSimulatingInstall, setIsSimulatingInstall] = useState(false);
+  const [installProgress, setInstallProgress] = useState(0);
 
   useEffect(() => {
     // Check if already installed
@@ -51,8 +53,23 @@ export function InstallPWA() {
       setDeferredPrompt(null);
       setShowInstallBanner(false);
     } else {
-      // If no prompt, just close or show a message (handled by UI below)
-      alert('تطبيقك سيثبت بعد قليل في انتظار تهيئة اعدادات هاتفك');
+      // Simulate installation progress
+      setIsSimulatingInstall(true);
+      setInstallProgress(0);
+      
+      const interval = setInterval(() => {
+        setInstallProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              alert('تطبيقك سيثبت بعد قليل في انتظار تهيئة اعدادات هاتفك');
+              setIsSimulatingInstall(false);
+            }, 500);
+            return 100;
+          }
+          return prev + Math.floor(Math.random() * 15) + 5;
+        });
+      }, 300);
     }
   };
 
@@ -105,13 +122,33 @@ export function InstallPWA() {
           )}
         </div>
 
-        <button
-          onClick={handleInstallClick}
-          className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-[#0a0a0a] font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all transform hover:scale-105 active:scale-95"
-        >
-          <Download size={24} />
-          <span className="text-lg">{deferredPrompt ? 'تثبيت التطبيق الآن' : 'كيفية التثبيت'}</span>
-        </button>
+        {isSimulatingInstall ? (
+          <div className="w-full">
+            <div className="flex justify-between text-sm font-semibold mb-2 text-teal-300/80">
+              <span>جاري التحميل والتثبيت...</span>
+              <span dir="ltr">{Math.min(installProgress, 100)}%</span>
+            </div>
+            <div className="w-full h-3 bg-[#1a1a1a] rounded-full overflow-hidden border border-teal-900/50 shadow-inner" dir="ltr">
+              <div 
+                className="h-full bg-gradient-to-r from-teal-600 via-teal-400 to-emerald-300 transition-all duration-300 ease-out relative"
+                style={{ width: `${Math.min(installProgress, 100)}%` }}
+              >
+                <div className="absolute top-0 right-0 bottom-0 left-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:20px_20px]" style={{ animation: 'moveStripes 1s linear infinite' }} />
+              </div>
+            </div>
+            <p className="text-center text-xs text-slate-400 mt-3 animate-pulse">
+              يرجى الانتظار، جاري تحضير ملفات التطبيق...
+            </p>
+          </div>
+        ) : (
+          <button
+            onClick={handleInstallClick}
+            className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-[#0a0a0a] font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all transform hover:scale-105 active:scale-95"
+          >
+            <Download size={24} />
+            <span className="text-lg">{deferredPrompt ? 'تثبيت التطبيق الآن' : 'كيفية التثبيت'}</span>
+          </button>
+        )}
       </div>
     </div>
   );
