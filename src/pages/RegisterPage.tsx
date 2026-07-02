@@ -116,7 +116,14 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4" dir="rtl">
       <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100 dark:border-slate-700">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-yellow-600 font-['Space_Grotesk'] mb-2">PRO GÉNIRATEUR AI</h1>
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-1">
+              <div className="w-full h-full bg-[#0a0a0a] rounded-[14px] flex items-center justify-center overflow-hidden relative">
+                 <img src="/icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[14px]" />
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-500 to-yellow-600 font-['Space_Grotesk'] mb-2">PRO GÉNÉRATEUR AI</h1>
           <p className="text-slate-500 dark:text-slate-400">إنشاء حساب جديد</p>
         </div>
 
