@@ -50,8 +50,8 @@ service cloud.firestore {
     match /activation_codes/{codeId} {
       // Any authenticated user can read codes to activate them
       allow read: if isAuthenticated();
-      // Users can update a code (to mark it as used) if they are active, Admins can do anything
-      allow update: if isActiveUser() || isAdmin();
+      // Any authenticated user can update a code (to mark it as used)
+      allow update: if isAuthenticated();
       // Only admins can create or delete codes
       allow create, delete: if isAdmin();
     }

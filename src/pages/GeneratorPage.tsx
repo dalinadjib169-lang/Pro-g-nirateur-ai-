@@ -109,6 +109,7 @@ export default function GeneratorPage() {
   const [docColor, setDocColor] = useState('#1e40af');
   const [documentLanguage, setDocumentLanguage] = useState('ar');
   const [includeWatermark, setIncludeWatermark] = useState(false);
+  const [isActivatingCode, setIsActivatingCode] = useState(false);
 
   // Scaling logic
   const containerRef = useRef<HTMLDivElement>(null);
@@ -918,18 +919,21 @@ export default function GeneratorPage() {
                       const code = input.value.trim().toUpperCase();
                     if(!code) return;
                     
+                    setIsActivatingCode(true);
                     try {
                       const q = query(collection(db, 'activation_codes'), where('code', '==', code));
                       const querySnapshot = await getDocs(q);
                       
                       if(querySnapshot.empty) {
                         alert('الكود غير صالح (غير موجود). تأكد من صحة الكود.');
+                        setIsActivatingCode(false);
                         return;
                       }
                       
                       const codeDoc = querySnapshot.docs[0];
                       if(codeDoc.data().isUsed) {
                         alert('هذا الكود تم استخدامه من قبل.');
+                        setIsActivatingCode(false);
                         return;
                       }
                       
@@ -954,11 +958,14 @@ export default function GeneratorPage() {
                     } catch (error: any) {
                       console.error('Error redeeming code:', error);
                       alert('حدث خطأ أثناء تفعيل الكود: ' + error.message);
+                    } finally {
+                      setIsActivatingCode(false);
                     }
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors"
+                  disabled={isActivatingCode}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors flex items-center justify-center min-w-[60px]"
                 >
-                  تفعيل
+                  {isActivatingCode ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'تفعيل'}
                 </button>
               </div>
             </div>

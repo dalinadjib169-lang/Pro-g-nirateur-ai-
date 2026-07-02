@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../lib/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { useAuth, UserData } from '../contexts/AuthContext';
-import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit, Plus, RefreshCw, Home } from 'lucide-react';
+import { Users, Key, Settings, BarChart3, Search, Trash2, Power, Edit, Plus, RefreshCw, Home, Copy } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 import { uploadImage } from '../lib/cloudinary';
 
@@ -52,9 +52,15 @@ export default function AdminDashboard() {
   const fetchCodes = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'activation_codes'));
-      const codesData: any[] = [];
+      let codesData: any[] = [];
       querySnapshot.forEach((doc) => {
         codesData.push({ id: doc.id, ...doc.data() });
+      });
+      // Sort in memory by createdAt descending
+      codesData.sort((a, b) => {
+        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return dateB - dateA;
       });
       setCodes(codesData);
     } catch (error) {
@@ -429,7 +435,17 @@ export default function AdminDashboard() {
                 <tbody>
                   {codes.map(code => (
                     <tr key={code.id} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white" dir="ltr">{code.code}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white" dir="ltr">
+                        <div className="flex items-center gap-2">
+                          <span>{code.code}</span>
+                          <button onClick={() => {
+                            navigator.clipboard.writeText(code.code);
+                            alert('تم نسخ الكود!');
+                          }} className="text-slate-400 hover:text-indigo-500" title="نسخ الكود">
+                            <Copy size={16} />
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-emerald-600 font-bold">+{code.generations}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs ${code.isUsed ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
