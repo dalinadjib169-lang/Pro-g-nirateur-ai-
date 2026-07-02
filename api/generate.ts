@@ -15,7 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export const maxDuration = 60; // Set max duration to 60 seconds (Vercel Hobby limit)
+
 
 const getApiKeys = async () => {
   const keys: string[] = [];
@@ -190,7 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         });
 
-        response = await ai.models.generateContent({
+        const responseStream = await ai.models.generateContentStream({
           model: "gemini-2.5-flash",
           contents: userPrompt,
           config: {
@@ -198,7 +198,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             temperature: 0.7,
           },
         });
-        break; 
+
+        // Set headers for streaming response
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Transfer-Encoding', 'chunked');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        
+        for await (const chunk of responseStream) {
+            if (chunk.text) {
+                res.write(chunk.text);
+            }
+        }
+        res.end();
+        return;
       } catch (error: any) {
         lastError = error;
         attempts++;
@@ -231,25 +243,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (!response) {
-      const errString = typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError);
-      const errMsg = lastError?.message || errString;
-      const isRateLimit = lastError?.status === 429 || lastError?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
-      
-      if (isRateLimit) {
-         throw new Error("RATE_LIMIT");
-      }
-      throw lastError || new Error("Failed to generate content");
+    const errString = typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError);
+    const errMsg = lastError?.message || errString;
+    const isRateLimit = lastError?.status === 429 || lastError?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
+    
+    if (isRateLimit) {
+        throw new Error("RATE_LIMIT");
     }
-
-    let htmlContent = response.text || "";
-    htmlContent = htmlContent.replace(/```html/gi, '').replace(/```/g, '');
-    htmlContent = htmlContent.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
-    htmlContent = htmlContent.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-    htmlContent = htmlContent.replace(/position\s*:\s*fixed/gi, 'position: absolute');
-    htmlContent = htmlContent.replace(/100vw/gi, '100%').replace(/100vh/gi, '100%');
-
-    res.status(200).json({ content: htmlContent });
+    throw lastError || new Error("Failed to generate content");
   } catch (error: any) {
     const errString = typeof error === 'object' ? JSON.stringify(error) : String(error);
     const errMsg = error?.message || errString;

@@ -179,7 +179,9 @@ export const TeachersRoom: React.FC = () => {
       unsub1();
       unsub2();
     };
-  }, [isOpen, userData]);
+  }, [userData]); // Listen to sessions regardless of isOpen to show badge
+
+  const pendingRequestsCount = allSessions.filter(s => s.status === 'pending' && s.initiatorId !== userData?.uid).length;
 
   useEffect(() => {
     if (!activeChat || !userData) {
@@ -248,6 +250,16 @@ export const TeachersRoom: React.FC = () => {
       status: 'accepted',
       updatedAt: serverTimestamp()
     });
+  };
+
+  const rejectChat = async () => {
+    if (!chatSession) return;
+    await updateDoc(doc(db, 'chat_sessions', chatSession.id), {
+      status: 'rejected',
+      updatedAt: serverTimestamp()
+    });
+    setChatSession(null);
+    setActiveChat(null);
   };
 
   const sendMessage = async (e?: React.FormEvent) => {
@@ -323,6 +335,12 @@ export const TeachersRoom: React.FC = () => {
             <div className="absolute bottom-0 right-0 bg-indigo-500 rounded-full p-1 border-2 border-slate-900">
               <MessageCircle size={14} className="text-white" />
             </div>
+
+            {pendingRequestsCount > 0 && (
+              <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse border-2 border-white dark:border-slate-900">
+                {pendingRequestsCount}
+              </span>
+            )}
           </button>
         </div>
       </motion.div>
@@ -564,12 +582,20 @@ export const TeachersRoom: React.FC = () => {
                           <>
                             <h3 className="font-bold text-slate-800 dark:text-white mb-2">دعوة محادثة جديدة</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">يريد {activeChat.firstName} التواصل معك.</p>
-                            <button 
-                              onClick={acceptChat}
-                              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/30 transition-transform active:scale-95"
-                            >
-                              قبول الدعوة
-                            </button>
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={acceptChat}
+                                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/30 transition-transform active:scale-95"
+                              >
+                                قبول الدعوة
+                              </button>
+                              <button 
+                                onClick={rejectChat}
+                                className="flex-1 bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-red-500/30 transition-transform active:scale-95"
+                              >
+                                رفض
+                              </button>
+                            </div>
                           </>
                         )}
                       </div>

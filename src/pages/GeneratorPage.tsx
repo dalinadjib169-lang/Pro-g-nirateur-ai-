@@ -321,11 +321,10 @@ export default function GeneratorPage() {
           await updateDoc(doc(db, 'users', userData.uid), {
             profilePic: url
           });
-          refreshUserData();
-          setTimeout(() => {
-            setSelectedProfileImage(null);
-            setProfileImagePreview(null);
-          }, 1000);
+          await refreshUserData();
+          
+          // We intentionally do not clear profileImagePreview so it stays visible instantly
+          // and avoids flickering while Firestore syncs or reloads.
         }
       } catch (error) {
         console.error('Upload error:', error);
@@ -405,32 +404,48 @@ export default function GeneratorPage() {
           aiPrompt
         })
       });
-      let data;
-      try {
-        if (!res.ok) {
-           if (res.status === 504) throw new Error('انتهى وقت الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
-           const text = await res.text();
-           try { data = JSON.parse(text); } catch(e) { throw new Error(text || 'خطأ في الخادم (Server Error)'); }
-        } else {
-           data = await res.json();
-        }
-      } catch (e: any) {
-        throw new Error(e.message || 'Server returned an invalid response. Please try again.');
+
+      if (!res.ok) {
+         if (res.status === 504) throw new Error('انتهى وقت الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
+         const text = await res.text();
+         let errorMessage = text || 'خطأ في الخادم (Server Error)';
+         try { 
+            const data = JSON.parse(text); 
+            if (data.error) errorMessage = data.error;
+         } catch(e) { /* use raw text */ }
+         throw new Error(errorMessage);
       }
-      
-      if (data?.error) throw new Error(data.error);
-      
-      // Strip any <style> tags to prevent the AI from accidentally corrupting the global app layout
-      let safeHtml = data.content;
-      if (typeof safeHtml === 'string') {
-        safeHtml = safeHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
-        // Use DOMParser to ensure all tags are perfectly balanced so it doesn't break React's DOM tree
-        try {
-          const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
-          safeHtml = doc.body.innerHTML;
-        } catch (parseError) {
-          console.error("DOMParser error:", parseError);
-        }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Stream not supported by browser");
+
+      const decoder = new TextDecoder();
+      let streamedHtml = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        streamedHtml += chunk;
+        
+        // Show partial content (without final cleanup, just fast display)
+        let displayHtml = streamedHtml.replace(/```html/gi, '').replace(/```/g, '');
+        setGeneratedHtml(displayHtml);
+      }
+
+      let safeHtml = streamedHtml;
+      safeHtml = safeHtml.replace(/```html/gi, '').replace(/```/g, '');
+      safeHtml = safeHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
+      safeHtml = safeHtml.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+      safeHtml = safeHtml.replace(/position\s*:\s*fixed/gi, 'position: absolute');
+      safeHtml = safeHtml.replace(/100vw/gi, '100%').replace(/100vh/gi, '100%');
+
+      try {
+        const docHtml = new DOMParser().parseFromString(safeHtml, 'text/html');
+        safeHtml = docHtml.body.innerHTML;
+      } catch (parseError) {
+        console.error("DOMParser error:", parseError);
       }
       
       setGeneratedHtml(safeHtml);
@@ -936,7 +951,7 @@ export default function GeneratorPage() {
                       const querySnapshot = await getDocs(q);
                       
                       if(querySnapshot.empty) {
-                        alert('الكود غير صالح (غير موجود). تأكد من صحة الكود.');
+                        alert('الكود غير صالح (غير موجود). تأكد من صحة الكود وتأكد من عدم الخلط بين حرف O ورقم 0.');
                         setIsActivatingCode(false);
                         return;
                       }

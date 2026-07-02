@@ -158,7 +158,7 @@ async function startServer() {
             }
           });
 
-          response = await ai.models.generateContent({
+          const responseStream = await ai.models.generateContentStream({
             model: "gemini-2.5-flash",
             contents: userPrompt,
             config: {
@@ -166,7 +166,18 @@ async function startServer() {
               temperature: 0.7,
             },
           });
-          break; // Success
+          
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.setHeader('Transfer-Encoding', 'chunked');
+          res.setHeader('Cache-Control', 'no-cache, no-transform');
+          
+          for await (const chunk of responseStream) {
+              if (chunk.text) {
+                  res.write(chunk.text);
+              }
+          }
+          res.end();
+          return;
         } catch (error: any) {
           lastError = error;
           attempts++;
@@ -185,23 +196,9 @@ async function startServer() {
         }
       }
 
-      if (!response) {
+      if (attempts >= retries) {
         throw lastError || new Error("Failed to generate content");
       }
-
-      let htmlContent = response.text || "";
-      // Clean up markdown code blocks if the model adds them despite instructions
-      htmlContent = htmlContent.replace(/```html/gi, '').replace(/```/g, '');
-      // Strip <style> tags to prevent breaking the main app UI
-      htmlContent = htmlContent.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
-      // Strip <script> tags to prevent execution
-      htmlContent = htmlContent.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-      // Prevent fixed position which breaks the React layout
-      htmlContent = htmlContent.replace(/position\s*:\s*fixed/gi, 'position: absolute');
-      // Also prevent viewport sizing that might cover everything
-      htmlContent = htmlContent.replace(/100vw/gi, '100%').replace(/100vh/gi, '100%');
-
-      res.json({ content: htmlContent });
     } catch (error: any) {
       console.error("Gemini API Error:", error);
       res.status(500).json({ error: error.message || "An error occurred during generation." });

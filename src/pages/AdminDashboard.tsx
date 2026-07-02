@@ -143,8 +143,12 @@ export default function AdminDashboard() {
 
   const handleGenerateCode = async () => {
     try {
-      // Generate random 12-char alphanumeric code
-      const code = Math.random().toString(36).substring(2, 14).toUpperCase();
+      // Generate random 12-char alphanumeric code without ambiguous characters (O, 0, I, 1, L)
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 12; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
       
       await addDoc(collection(db, 'activation_codes'), {
         code,

@@ -8,6 +8,7 @@ export function InstallPWA() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isSimulatingInstall, setIsSimulatingInstall] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
+  const [installComplete, setInstallComplete] = useState(false);
 
   useEffect(() => {
     // Check if already installed
@@ -56,14 +57,14 @@ export function InstallPWA() {
       // Simulate installation progress
       setIsSimulatingInstall(true);
       setInstallProgress(0);
+      setInstallComplete(false);
       
       const interval = setInterval(() => {
         setInstallProgress((prev) => {
           if (prev >= 100) {
             clearInterval(interval);
             setTimeout(() => {
-              alert('تطبيقك سيثبت بعد قليل في انتظار تهيئة اعدادات هاتفك');
-              setIsSimulatingInstall(false);
+              setInstallComplete(true);
             }, 500);
             return 100;
           }
@@ -122,7 +123,42 @@ export function InstallPWA() {
           )}
         </div>
 
-        {isSimulatingInstall ? (
+        {installComplete ? (
+          <div className="w-full flex flex-col items-center">
+            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 text-center">تم التحضير بنجاح!</h3>
+            <p className="text-sm text-slate-300 text-center mb-6">التطبيق قيد التثبيت في الخلفية وسوف يظهر على شاشتك الرئيسية قريباً.</p>
+            <button 
+              onClick={async () => {
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: 'المربي DZ',
+                      text: 'حمل تطبيق المربي DZ - المساعد الذكي للأستاذ الجزائري',
+                      url: window.location.origin
+                    });
+                  } catch (err) {
+                    console.log('Error sharing', err);
+                  }
+                } else {
+                  alert('ميزة المشاركة غير مدعومة في هذا المتصفح');
+                }
+              }}
+              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-3"
+            >
+              <Share size={20} />
+              شارك التطبيق مع زملائك
+            </button>
+            <button 
+              onClick={() => setShowInstallBanner(false)}
+              className="w-full bg-white/10 hover:bg-white/15 text-white py-3 rounded-2xl font-bold transition-all"
+            >
+              إغلاق
+            </button>
+          </div>
+        ) : isSimulatingInstall ? (
           <div className="w-full">
             <div className="flex justify-between text-sm font-semibold mb-2 text-teal-300/80">
               <span>جاري التحميل والتثبيت...</span>
