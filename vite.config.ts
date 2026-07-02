@@ -18,6 +18,7 @@ export default defineConfig(() => {
           description: 'المساعد الذكي للأستاذ لتوليد المذكرات',
           theme_color: '#0a0a0a',
           background_color: '#0a0a0a',
+          start_url: '/',
           display: 'standalone',
           icons: [
             {
