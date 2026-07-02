@@ -143,16 +143,18 @@ export default function AdminDashboard() {
 
   const handleGenerateCode = async () => {
     try {
-      // Generate random 12-char alphanumeric code without ambiguous characters (O, 0, I, 1, L)
+      // Generate random alphanumeric code without ambiguous characters (O, 0, I, 1, L)
       const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < 12; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      let randomPart = '';
+      for (let i = 0; i < 8; i++) {
+        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
       }
+      const code = `PRO-${randomPart.substring(0, 4)}-${randomPart.substring(4, 8)}`;
       
       await addDoc(collection(db, 'activation_codes'), {
         code,
-        generations: 250,
+        type: 'pro',
+        generations: 500, // Pro users get more generations
         isUsed: false,
         usedBy: null,
         createdAt: serverTimestamp()
@@ -160,7 +162,7 @@ export default function AdminDashboard() {
       fetchCodes();
       
       // Use window.prompt so it's easy to copy on mobile devices
-      window.prompt('تم توليد الكود بنجاح. انسخ الكود التالي:', code);
+      window.prompt('تم توليد كود تفعيل الوضع الاحترافي بنجاح. انسخ الكود التالي:', code);
     } catch (error) {
       console.error('Error generating code:', error);
       alert('خطأ في توليد الكود.');

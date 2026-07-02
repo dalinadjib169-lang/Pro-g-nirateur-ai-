@@ -948,7 +948,7 @@ export default function GeneratorPage() {
                     onClick={async () => {
                       const input = document.getElementById('activation-code-input') as HTMLInputElement;
                       const rawCode = input.value.toUpperCase();
-                      const code = rawCode.replace(/[^A-Z0-9]/g, ''); // Remove all whitespace and invalid characters
+                      const code = rawCode.replace(/[^A-Z0-9-]/g, ''); // Allow hyphens
                     if(!code) return;
                     
                     setIsActivatingCode(true);
@@ -963,13 +963,15 @@ export default function GeneratorPage() {
                       }
                       
                       const codeDoc = querySnapshot.docs[0];
-                      if(codeDoc.data().isUsed) {
+                      const codeData = codeDoc.data();
+                      
+                      if(codeData.isUsed) {
                         alert('هذا الكود تم استخدامه من قبل.');
                         setIsActivatingCode(false);
                         return;
                       }
                       
-                      const generationsToAdd = codeDoc.data().generations || 250;
+                      const generationsToAdd = codeData.generations || 500;
                       
                       // Mark code as used
                       await updateDoc(doc(db, 'activation_codes', codeDoc.id), {
@@ -978,13 +980,14 @@ export default function GeneratorPage() {
                         usedAt: new Date()
                       });
                       
-                      // Add generations to user
+                      // Add generations to user and unlock Pro
                       await updateDoc(doc(db, 'users', userData!.uid), {
-                        generationsRemaining: increment(generationsToAdd)
+                        generationsRemaining: increment(generationsToAdd),
+                        isPro: true
                       });
                       
                       input.value = '';
-                      alert(`تم شحن رصيدك بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
+                      alert(`تم تفعيل الوضع الاحترافي وشحن رصيدك بنجاح!`);
                       refreshUserData();
                       
                     } catch (error: any) {
