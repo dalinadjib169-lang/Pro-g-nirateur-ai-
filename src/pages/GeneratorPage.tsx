@@ -948,7 +948,7 @@ export default function GeneratorPage() {
                     onClick={async () => {
                       const input = document.getElementById('activation-code-input') as HTMLInputElement;
                       const rawCode = input.value.toUpperCase();
-                      const code = rawCode.replace(/[^A-Z0-9-]/g, ''); // Allow hyphens
+                      const code = rawCode.replace(/[^A-Z0-9]/g, ''); // Strip all symbols including hyphens
                     if(!code) return;
                     
                     setIsActivatingCode(true);
