@@ -43,6 +43,21 @@ const getApiKeys = async () => {
   return [...new Set(keys)];
 };
 
+const markKeySuccess = async (key: string) => {
+  try {
+    const { updateDoc, increment } = await import('firebase/firestore');
+    const q = query(collection(db, 'api_keys'), where('key', '==', key));
+    const snapshot = await getDocs(q);
+    
+    const promises = snapshot.docs.map(docSnap => updateDoc(docSnap.ref, {
+        useCount: increment(1)
+    }));
+    await Promise.all(promises);
+  } catch(e) {
+    console.error('Failed to update key use count', e);
+  }
+};
+
 const markKeyError = async (key: string, errorMsg: string) => {
   try {
     const { updateDoc } = await import('firebase/firestore');
@@ -212,6 +227,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
         res.end();
+        // Fire and forget updating the key usage
+        markKeySuccess(apiKey).catch(console.error);
         return;
       } catch (error: any) {
         lastError = error;

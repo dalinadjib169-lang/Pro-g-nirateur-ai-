@@ -8,7 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { AlertCircle } from 'lucide-react';
 import LoadingScreen from './components/LoadingScreen';
-import { TeachersRoom } from './components/TeachersRoom';
+import TeachersRoom from './components/TeachersRoom';
 import { InstallPWA } from './components/InstallPWA';
 
 interface ErrorBoundaryProps {
