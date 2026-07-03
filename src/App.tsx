@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import { AlertCircle } from 'lucide-react';
 import LoadingScreen from './components/LoadingScreen';
 import { TeachersRoom } from './components/TeachersRoom';
+import { InstallPWA } from './components/InstallPWA';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -79,7 +80,28 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   return <>{children}</>;
 };
 
+import { CompleteProfileModal } from './components/CompleteProfileModal';
+import { ExpertChat } from './components/ExpertChat';
+
+// Add export event emitter for expert chat
+export const expertChatEmitter = new EventTarget();
+export const profileModalEmitter = new EventTarget();
+
 function AppRoutes() {
+  const [isExpertChatOpen, setIsExpertChatOpen] = React.useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleExpertOpen = () => setIsExpertChatOpen(true);
+    const handleProfileOpen = () => setIsProfileModalOpen(true);
+    expertChatEmitter.addEventListener('open', handleExpertOpen);
+    profileModalEmitter.addEventListener('open', handleProfileOpen);
+    return () => {
+      expertChatEmitter.removeEventListener('open', handleExpertOpen);
+      profileModalEmitter.removeEventListener('open', handleProfileOpen);
+    }
+  }, []);
+
   return (
     <>
       <Routes>
@@ -103,6 +125,9 @@ function AppRoutes() {
         />
       </Routes>
       <TeachersRoom />
+      <ExpertChat isOpen={isExpertChatOpen} onClose={() => setIsExpertChatOpen(false)} />
+      <CompleteProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
+      <InstallPWA />
     </>
   );
 }

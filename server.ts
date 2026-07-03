@@ -80,6 +80,7 @@ async function startServer() {
       4. لا تضف أي هوامش جانبية ضخمة (margins/padding) للحاويات الرئيسية، اجعل العرض 100% لتستغل عرض الورقة.
       5. ممنوع قطعياً استخدام وسم <style>. جميع التنسيقات يجب أن تكون inline CSS (أي style="...").
       6. ممنوع استخدام خصائص position: fixed أو position: absolute إلا في العلامة المائية فقط لتجنب تخريب واجهة التطبيق.
+      7. **الرموز الرياضية والمتغيرات**: في العمليات الحسابية والرياضيات والفيزياء، استخدم الحروف اللاتينية حصراً (x, y, z, a, b, c) ولا تستخدم الحروف العربية (مثل س، ص، ع) أبدأ في المعادلات.
       
       تعليمات التصميم والهيكلة:
       1. ستايل التصميم (Design Style): المستخدم اختار "${designStyle}". طبق هذا النمط من خلال الألوان المتدرجة، أشكال العناوين، الزوايا المنحنية، والخطوط للفقرات والبطاقات الداخلية. 
@@ -89,7 +90,7 @@ async function startServer() {
          - "مضمون عادي": توازن معتاد.
       3. الترويسة (Header) أفقية بالكامل توزع معلومات الدولة، المؤسسة، الأستاذ، والمادة.
       4. **الجداول**: الجداول يجب أن تكون بعرض 100%. لون صف العناوين بـ var(--doc-color).
-      5. **الأشكال والرسومات**: أضف أشكال (SVG) تناسب المادة (رياضيات: هندسة، علوم: نباتات/خلايا، إلخ).
+      5. **الأشكال والرسومات**: أضف أشكال (SVG) بسيطة فقط إذا لزم الأمر، لا تحاول توليد صور معقدة أو روابط خارجية لصور.
       6. **العلامة المائية (Watermark)**: ${includeWatermark ? 'المستخدم طلب علامة مائية. أضف عنصر <div> كأول عنصر في body. أعطه الكلاس `watermark-bg` فقط بدون أي inline styles. وضع بداخله رسمة SVG تناسب المادة.' : 'المستخدم لم يطلب علامة مائية. لا تضف أي علامة مائية.'}
       7. اللغة: التزم بلغة الوثيقة ${documentLanguage} مع ضبط اتجاه النص (RTL للعربية، LTR للغات الأجنبية).`;
       
@@ -203,6 +204,77 @@ async function startServer() {
       res.json({ content: htmlContent });
     } catch (error: any) {
       console.error("Gemini API Error:", error);
+      res.status(500).json({ error: error.message || "An error occurred during generation." });
+    }
+  });
+
+  app.post("/api/expert", async (req, res) => {
+    try {
+      const apiKeys = getApiKeys();
+      if (apiKeys.length === 0) {
+        return res.status(500).json({ error: "No API keys configured" });
+      }
+
+      const { messages } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "messages array is required" });
+      }
+
+      const systemInstruction = `أنت الخبير التربوي دالي نجيب، خبير في الشؤون التربوية، البيداغوجيا، الديداكتيك، قوانين التدريس، واجبات المعلم، علم النفس التربوي، حساب الدرجات، الترقيات، وكل ما يخص مسار الأستاذ مهنياً.
+يجب أن تجيب على أسئلة الأستاذ بلغة عربية سليمة وواضحة، وبأسلوب مهني وأخوي.
+دائما في نهاية إجابتك، قم بطرح سؤال قصير لاختبار مدى استيعاب الأستاذ للشرح الذي قدمته له لتتأكد من فهمه، ويجب أن يكون السؤال متعلقا حصريا بالموضوع الذي سأل عنه الأستاذ للتو.`;
+
+      let response;
+      let retries = 3;
+      let attempts = 0;
+      let lastError;
+
+      // Transform messages into Gemini format
+      const geminiMessages = messages.map((m: any) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+      }));
+
+      while (attempts < retries) {
+        try {
+          const apiKey = apiKeys[currentKeyIndex % apiKeys.length];
+          currentKeyIndex++;
+
+          const ai = new GoogleGenAI({ apiKey });
+
+          response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: geminiMessages,
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+            },
+          });
+          break; // Success
+        } catch (error: any) {
+          lastError = error;
+          attempts++;
+          console.error(`Expert API Attempt ${attempts} failed:`, error.message);
+          
+          if (error.status === 429) {
+            continue;
+          } else if (error.status === 503) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          } else if (attempts >= retries) {
+            throw error;
+          }
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("Failed to generate content");
+      }
+
+      res.json({ content: response.text });
+    } catch (error: any) {
+      console.error("Gemini Expert API Error:", error);
       res.status(500).json({ error: error.message || "An error occurred during generation." });
     }
   });

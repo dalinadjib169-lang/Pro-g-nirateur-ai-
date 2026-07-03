@@ -1,57 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User } from 'lucide-react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User, Sparkles, Settings, ImagePlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
+import { profileModalEmitter } from '../App';
 
-export const uploadToCloudinary = async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
-  const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
-  
-  if (!cloudName || !uploadPreset) {
-    console.warn("Cloudinary not configured. Falling back to base64.");
-    return new Promise((resolve) => {
-      if (onProgress) onProgress(50);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (onProgress) onProgress(100);
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
-    
-    if (onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = (e.loaded / e.total) * 100;
-          onProgress(percentComplete);
-        }
-      };
-    }
-
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        const response = JSON.parse(xhr.responseText);
-        resolve(response.secure_url);
-      } else {
-        reject(new Error('Upload failed'));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error'));
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    xhr.send(formData);
-  });
-};
+import { uploadImage } from '../lib/cloudinary';
 
 interface Teacher {
   uid: string;
@@ -89,131 +44,175 @@ export const TeachersRoom: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [activeChat, setActiveChat] = useState<Teacher | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [roomBanner, setRoomBanner] = useState<string | null>(null);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch room banner
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().roomBanner) {
+        setRoomBanner(docSnap.data().roomBanner);
+      }
+    });
+    return () => unsub();
+  }, [isOpen]);
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBanner(true);
+    try {
+      const url = await uploadImage(file);
+      await setDoc(doc(db, 'settings', 'general'), { roomBanner: url }, { merge: true });
+    } catch (err) {
+      console.error(err);
+      alert('فشل رفع صورة القاعة');
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
 
   // Fetch teachers
   useEffect(() => {
     if (!isOpen || !userData) return;
 
-    const fetchTeachers = async () => {
-      try {
-        const q = query(collection(db, 'users'));
-        const querySnapshot = await getDocs(q);
-        const fetchedTeachers: Teacher[] = [];
-        querySnapshot.forEach((doc) => {
-          if (doc.id !== userData.uid) {
-            fetchedTeachers.push({ uid: doc.id, ...doc.data() } as Teacher);
-          }
-        });
-
-        // Add developer if not present, for demo
-        const devExists = fetchedTeachers.find(t => t.email === 'dalinadjib1990@gmail.com');
-        if (!devExists) {
-          fetchedTeachers.push({
-            uid: 'dev_dali_nadjib',
-            firstName: 'دالي',
-            lastName: 'نجيب',
-            email: 'dalinadjib1990@gmail.com',
-            wilaya: 'الجزائر',
-            phase: 'الجميع',
-            subject: 'المطور',
-            isOnline: true,
-            profilePic: '/icon.png'
-          });
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const fetchedTeachers: Teacher[] = [];
+      querySnapshot.forEach((doc) => {
+        if (doc.id !== userData.uid) {
+          fetchedTeachers.push({ uid: doc.id, ...doc.data() } as Teacher);
         }
+      });
 
-        // Sorting:
-        // 1. Developer first
-        // 2. Same wilaya
-        // 3. Same phase
-        // 4. Same subject
-        // 5. Random
-        fetchedTeachers.sort((a, b) => {
-          if (a.email === 'dalinadjib1990@gmail.com') return -1;
-          if (b.email === 'dalinadjib1990@gmail.com') return 1;
-          
-          let scoreA = 0;
-          let scoreB = 0;
-          if (a.wilaya === userData.wilaya) scoreA += 3;
-          if (a.phase === userData.phase) scoreA += 2;
-          if (a.subject === userData.subject) scoreA += 1;
-          
-          if (b.wilaya === userData.wilaya) scoreB += 3;
-          if (b.phase === userData.phase) scoreB += 2;
-          if (b.subject === userData.subject) scoreB += 1;
-          
-          if (scoreA !== scoreB) return scoreB - scoreA;
-          return Math.random() - 0.5;
+      // Add developer if not present, for demo
+      const devExists = fetchedTeachers.find(t => t.email === 'dalinadjib1990@gmail.com');
+      if (!devExists) {
+        fetchedTeachers.push({
+          uid: 'dev_dali_nadjib',
+          firstName: 'دالي',
+          lastName: 'نجيب',
+          email: 'dalinadjib1990@gmail.com',
+          wilaya: 'الجزائر',
+          phase: 'الجميع',
+          subject: 'المطور',
+          isOnline: true,
+          profilePic: '/icon.png'
         });
-
-        setTeachers(fetchedTeachers);
-      } catch (error) {
-        console.error("Error fetching teachers", error);
       }
-    };
 
-    fetchTeachers();
+      // Sorting:
+      // 1. Developer first
+      // 2. Same wilaya (state)
+      // 3. Same phase
+      // 4. Same subject
+      // 5. Random
+      fetchedTeachers.sort((a, b) => {
+        if (a.email === 'dalinadjib1990@gmail.com') return -1;
+        if (b.email === 'dalinadjib1990@gmail.com') return 1;
+        
+        let scoreA = 0;
+        let scoreB = 0;
+        const userState = userData.state || (userData as any).wilaya;
+        const aState = (a as any).state || a.wilaya;
+        const bState = (b as any).state || b.wilaya;
+
+        if (aState === userState) scoreA += 3;
+        if (a.phase === userData.phase) scoreA += 2;
+        if (a.subject === (userData as any).subject) scoreA += 1;
+        
+        if (bState === userState) scoreB += 3;
+        if (b.phase === userData.phase) scoreB += 2;
+        if (b.subject === (userData as any).subject) scoreB += 1;
+        
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return Math.random() - 0.5; // Randomize the rest
+      });
+
+      setTeachers(fetchedTeachers);
+    }, (error) => {
+      console.error("Error fetching teachers", error);
+    });
+
+    return () => unsubscribe();
   }, [isOpen, userData]);
 
-  // Listen to chat sessions
+  // Listen to all chat sessions to show notifications
   useEffect(() => {
     if (!isOpen || !userData) return;
     
     const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid));
     const q2 = query(collection(db, 'chat_sessions'), where('user2Id', '==', userData.uid));
     
-    // In a real app we'd combine or listen to both. For simplicity, we just listen when activeChat is selected.
+    let sessions1: ChatSession[] = [];
+    let sessions2: ChatSession[] = [];
+
+    const updateAllSessions = () => {
+      const combined = [...sessions1, ...sessions2];
+      // remove duplicates just in case (shouldn't happen but safe)
+      const uniqueSessions = combined.filter((s, index, self) => 
+        index === self.findIndex((t) => t.id === s.id)
+      );
+      setAllSessions(uniqueSessions);
+    };
+
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+      sessions1 = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
+      updateAllSessions();
+    });
+
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+      sessions2 = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
+      updateAllSessions();
+    });
+    
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [isOpen, userData]);
 
   useEffect(() => {
-    if (!activeChat || !userData) return;
+    if (!activeChat || !userData) {
+      setChatSession(null);
+      setMessages([]);
+      return;
+    }
 
-    const checkSession = async () => {
-      // Find session where (user1 == me AND user2 == active) OR (user1 == active AND user2 == me)
-      // Since Firestore doesn't support OR well without composite indexes, we check both
-      const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid), where('user2Id', '==', activeChat.uid));
-      const q2 = query(collection(db, 'chat_sessions'), where('user1Id', '==', activeChat.uid), where('user2Id', '==', userData.uid));
-      
-      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-      
-      let sessionDoc = snap1.empty ? (snap2.empty ? null : snap2.docs[0]) : snap1.docs[0];
-      
-      if (!sessionDoc) {
-        setChatSession(null);
-      } else {
-        setChatSession({ id: sessionDoc.id, ...sessionDoc.data() } as ChatSession);
-        
-        // Listen to session changes
-        const unsubSession = onSnapshot(doc(db, 'chat_sessions', sessionDoc.id), (d) => {
-          if (d.exists()) {
-            setChatSession({ id: d.id, ...d.data() } as ChatSession);
-          }
-        });
-        
-        // Listen to messages
-        const messagesRef = collection(db, 'chat_sessions', sessionDoc.id, 'messages');
-        const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
-        const unsubMessages = onSnapshot(qMsg, (snapshot) => {
-          const msgs: Message[] = [];
-          snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
-          setMessages(msgs);
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-        });
-        
-        return () => {
-          unsubSession();
-          unsubMessages();
-        };
-      }
-    };
+    const session = allSessions.find(s => 
+      (s.user1Id === userData.uid && s.user2Id === activeChat.uid) ||
+      (s.user1Id === activeChat.uid && s.user2Id === userData.uid)
+    );
+
+    if (!session) {
+      setChatSession(null);
+      setMessages([]);
+      return;
+    }
+
+    setChatSession(session);
+
+    // Listen to messages
+    const messagesRef = collection(db, 'chat_sessions', session.id, 'messages');
+    const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
+    const unsubMessages = onSnapshot(qMsg, (snapshot) => {
+      const msgs: Message[] = [];
+      snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
+      setMessages(msgs);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    });
     
-    checkSession();
-  }, [activeChat, userData]);
+    return () => unsubMessages();
+  }, [activeChat, userData, allSessions]);
 
   const startChat = async () => {
     if (!userData || !activeChat) return;
@@ -284,7 +283,7 @@ export const TeachersRoom: React.FC = () => {
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      const url = await uploadToCloudinary(file, setUploadProgress);
+      const url = await uploadImage(file, setUploadProgress);
       await addDoc(collection(db, 'chat_sessions', chatSession.id, 'messages'), {
         chatId: chatSession.id,
         senderId: userData.uid,
@@ -318,11 +317,8 @@ export const TeachersRoom: React.FC = () => {
             className="relative flex items-center justify-center w-16 h-16 rounded-full bg-slate-900 border-2 border-white/20 shadow-2xl overflow-hidden"
             title="قاعة الأساتذة"
           >
-            {userData.profilePic ? (
-              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <User size={28} className="text-white" />
-            )}
+            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=200&auto=format&fit=crop" alt="قاعة الأساتذة" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            
             {/* Overlay Icon */}
             <div className="absolute bottom-0 right-0 bg-indigo-500 rounded-full p-1 border-2 border-slate-900">
               <MessageCircle size={14} className="text-white" />
@@ -349,7 +345,7 @@ export const TeachersRoom: React.FC = () => {
                   <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-fuchsia-500 rounded-full blur-sm opacity-80 animate-pulse"></div>
                   <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white relative overflow-hidden">
                     {userData.profilePic ? (
-                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.firstName || 'U')}&background=random` }} />
                     ) : (
                       <User className="w-full h-full p-2 text-indigo-300" />
                     )}
@@ -358,15 +354,20 @@ export const TeachersRoom: React.FC = () => {
                 <div>
                   <h3 className="font-bold text-sm leading-tight">{userData.firstName} {userData.lastName}</h3>
                   <div className="flex items-center gap-2 text-[10px] text-indigo-100 mt-1 opacity-90">
-                    <span className="flex items-center gap-0.5"><MapPin size={10} /> {userData.wilaya || 'الولاية'}</span>
+                    <span className="flex items-center gap-0.5"><MapPin size={10} /> {(userData as any).state || (userData as any).wilaya || 'الولاية'}</span>
                     <span className="flex items-center gap-0.5"><GraduationCap size={10} /> {userData.phase || 'الطور'}</span>
                     <span className="flex items-center gap-0.5"><BookOpen size={10} /> {userData.subject || 'الاختصاص'}</span>
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => profileModalEmitter.dispatchEvent(new Event('open'))} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10" title="تحديث الملف الشخصي">
+                  <Settings size={18} />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -374,6 +375,39 @@ export const TeachersRoom: React.FC = () => {
               {!activeChat ? (
                 // Teachers List
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+                  {/* Room Banner */}
+                  <div className="mb-4 relative rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 h-32 group">
+                    <img 
+                      src={roomBanner || "https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=800&auto=format&fit=crop"} 
+                      alt="تجمع الأساتذة" 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer" 
+                    />
+                    
+                    {/* Banner overlay gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                      <div className="absolute bottom-3 right-3 text-white font-bold text-sm">
+                        قاعة الأساتذة العامة
+                      </div>
+
+                      {(userData?.email === 'dalinadjib1990@gmail.com' || userData?.role === 'admin') && (
+                        <>
+                          <input type="file" ref={bannerInputRef} onChange={handleBannerUpload} className="hidden" accept="image/*" />
+                          <button 
+                            onClick={() => bannerInputRef.current?.click()}
+                            disabled={isUploadingBanner}
+                            className="absolute top-2 left-2 bg-black/40 hover:bg-black/60 backdrop-blur text-white p-1.5 rounded-lg transition-all flex items-center gap-1 text-xs shadow-lg"
+                          >
+                            {isUploadingBanner ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <ImagePlus size={14} />
+                            )}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  
                   <div className="mb-4">
                     <div className="relative">
                       <input 
@@ -385,19 +419,68 @@ export const TeachersRoom: React.FC = () => {
                     </div>
                   </div>
                   
+                  <div className="mb-4">
+                    <button 
+                      onClick={() => {
+                        import('../App').then(m => m.expertChatEmitter.dispatchEvent(new Event('open')));
+                      }}
+                      className="w-full flex items-center gap-3 p-3 bg-gradient-to-l from-amber-500/10 to-yellow-600/10 hover:from-amber-500/20 hover:to-yellow-600/20 rounded-xl border border-amber-500/30 transition-all text-right group"
+                    >
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-500 shadow-lg shadow-amber-500/20 flex items-center justify-center bg-slate-800">
+                          {userData?.expertAvatar || localStorage.getItem('expertAvatar') ? (
+                            <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="الخبير التربوي" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <img src="/icon.png" alt="الخبير التربوي" className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800 z-10"></div>
+                      </div>
+                      
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex justify-between items-center mb-0.5">
+                          <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate flex items-center gap-1">
+                            الخبير التربوي دالي <Sparkles size={12} className="text-amber-500" />
+                          </h5>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          ذكاء اصطناعي خبير في البيداغوجيا والقوانين
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+
                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 px-1 uppercase tracking-wider">الأساتذة المتاحين</h4>
                   
                   <div className="space-y-2">
-                    {teachers.map(teacher => (
+                    {teachers.map(teacher => {
+                      const session = allSessions.find(s => 
+                        (s.user1Id === userData?.uid && s.user2Id === teacher.uid) ||
+                        (s.user1Id === teacher.uid && s.user2Id === userData?.uid)
+                      );
+                      const hasPendingRequest = session?.status === 'pending' && session.initiatorId === teacher.uid;
+                      const hasActiveChat = session?.status === 'accepted';
+
+                      return (
                       <button 
                         key={teacher.uid}
                         onClick={() => setActiveChat(teacher)}
-                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl border border-slate-100 dark:border-slate-700/50 transition-all text-right group"
+                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl border border-slate-100 dark:border-slate-700/50 transition-all text-right group relative"
                       >
+                        {hasPendingRequest && (
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-bounce shadow-sm">
+                            طلب جديد
+                          </div>
+                        )}
+                        {hasActiveChat && !hasPendingRequest && (
+                          <div className="absolute top-2 left-2 bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                            محادثة نشطة
+                          </div>
+                        )}
                         <div className="relative">
                           <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${teacher.email === 'dalinadjib1990@gmail.com' ? 'border-amber-500' : 'border-indigo-100 dark:border-indigo-900'}`}>
                             {teacher.profilePic ? (
-                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" />
+                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.firstName || 'U')}&background=random` }} />
                             ) : (
                               <div className="w-full h-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-500">
                                 <User size={20} />
@@ -417,13 +500,13 @@ export const TeachersRoom: React.FC = () => {
                             </h5>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                            {teacher.wilaya && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><MapPin size={8} /> {teacher.wilaya}</span>}
+                            {((teacher as any).state || teacher.wilaya) && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><MapPin size={8} /> {(teacher as any).state || teacher.wilaya}</span>}
                             {teacher.phase && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><GraduationCap size={8} /> {teacher.phase}</span>}
                             {teacher.subject && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><BookOpen size={8} /> {teacher.subject}</span>}
                           </div>
                         </div>
                       </button>
-                    ))}
+                    )})}
                     
                     {teachers.length === 0 && (
                       <div className="text-center py-10 text-slate-500 text-sm">لا يوجد أساتذة متصلين حالياً.</div>
@@ -439,7 +522,7 @@ export const TeachersRoom: React.FC = () => {
                     </button>
                     <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 overflow-hidden">
                       {activeChat.profilePic ? (
-                        <img src={activeChat.profilePic} className="w-full h-full object-cover" />
+                        <img src={activeChat.profilePic} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(activeChat.firstName || 'U')}&background=random` }} />
                       ) : (
                         <User className="w-full h-full p-1.5 text-indigo-500" />
                       )}
@@ -497,7 +580,7 @@ export const TeachersRoom: React.FC = () => {
                               <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700 rounded-tl-none shadow-sm'}`}>
                                 {msg.imageUrl && (
                                   <a href={msg.imageUrl} target="_blank" rel="noreferrer">
-                                    <img src={msg.imageUrl} alt="Attachment" className="rounded-xl mb-2 max-w-full h-auto cursor-pointer" />
+                                    <img src={msg.imageUrl} alt="Attachment" className="rounded-xl mb-2 max-w-full h-auto cursor-pointer" referrerPolicy="no-referrer" />
                                   </a>
                                 )}
                                 {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
