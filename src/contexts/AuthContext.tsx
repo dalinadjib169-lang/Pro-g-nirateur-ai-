@@ -83,7 +83,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } else {
-        setUserData(null);
+        // Document does not exist, recreate it
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+           const isAdminUser = currentUser.email?.includes('0771167330') || currentUser.email === 'dalinadjib1990@gmail.com';
+           const newUserData: UserData = {
+              uid,
+              firstName: currentUser.displayName?.split(' ')[0] || 'مستخدم',
+              lastName: currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+              email: currentUser.email || '',
+              phone: currentUser.phoneNumber || '',
+              state: 'غير محدد',
+              phase: 'غير محدد',
+              role: isAdminUser ? 'admin' : 'user',
+              generationsRemaining: isAdminUser ? 9999 : 30,
+              totalGenerations: 0,
+              isActive: true,
+              createdAt: Date.now()
+           };
+           try {
+             await setDoc(docRef, newUserData);
+             setUserData(newUserData);
+             localStorage.setItem(`userData_${uid}`, JSON.stringify(newUserData));
+           } catch (e) {
+             console.error('Failed to create missing user document:', e);
+             setUserData(null);
+           }
+        } else {
+           setUserData(null);
+        }
       }
     } catch (error: any) {
       console.warn('Error fetching user data:', error);

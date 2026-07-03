@@ -21,8 +21,17 @@ export default function RegisterPage() {
   const { user, userData, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (user && userData && !authLoading) {
-      navigate('/');
+    if (!authLoading) {
+      if (user && userData) {
+        navigate('/');
+      } else if (user && !userData) {
+        // If they are authenticated but there's an error getting user data
+        setLoading(false);
+        setError('تعذر تسجيل بيانات المستخدم. يرجى المحاولة مرة أخرى.');
+        auth.signOut().catch(() => {});
+      } else {
+        setLoading(false);
+      }
     }
   }, [user, userData, authLoading, navigate]);
 
