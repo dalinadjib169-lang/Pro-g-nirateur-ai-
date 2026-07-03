@@ -1,7 +1,7 @@
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 
-const compressImage = (file: File, maxWidth = 800): Promise<string> => {
+const compressImage = (file: File, maxWidth = 400): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -34,7 +34,10 @@ export const uploadImage = async (file: File, onProgress?: (progress: number) =>
     const storageRef = ref(storage, `uploads/${filename}`);
     
     return await new Promise<string>((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const metadata = {
+        contentType: file.type || 'image/jpeg'
+      };
+      const uploadTask = uploadBytesResumable(storageRef, file, metadata);
       
       uploadTask.on(
         'state_changed',
