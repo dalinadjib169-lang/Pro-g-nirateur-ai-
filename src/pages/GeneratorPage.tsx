@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield, Bot, Settings, Image as ImageIcon, X, Brain, Mic } from 'lucide-react';
+import { Moon, Sun, Save, FileText, FileSpreadsheet, ListTodo, Download, Printer, User, School, BookOpen, Layers, Palette, Sparkles, Table, Hexagon, Smile, GraduationCap, Heart, Coffee, Zap, ZoomIn, ZoomOut, Maximize, Languages, Droplet, ImagePlus, Leaf, Star, Volume2, VolumeX, LogOut, Shield } from 'lucide-react';
 import { TeacherInfo, GenerationType, SubjectInfo, Exercise } from '../types';
 import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, updateDoc, collection, getDocs, query, where, increment } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
-import { expertChatEmitter, profileModalEmitter } from '../App';
-import { uploadImage } from '../lib/cloudinary';
 
 // Simple unique ID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -55,20 +53,8 @@ export default function GeneratorPage() {
         ...prev,
         firstName: prev.firstName || userData.firstName || '',
         lastName: prev.lastName || userData.lastName || '',
-        phase: prev.phase || userData.phase || '',
-        subject: prev.subject || (userData as any).subject || ''
+        phase: prev.phase || userData.phase || ''
       }));
-
-      // Detect language from subject
-      const userSubject = (userData as any).subject || '';
-      if (userSubject.includes('فرنسي') || userSubject.includes('francais') || userSubject.includes('french')) {
-        setDocumentLanguage('fr');
-      } else if (userSubject.includes('انجليزي') || userSubject.includes('english')) {
-        setDocumentLanguage('en');
-      } else {
-        // Only set default if we haven't already explicitly chosen something else, 
-        // but for now, we'll let it default to AR unless specified
-      }
     }
   }, [userData]);
   const [generationType, setGenerationType] = useState<GenerationType>('memo');
@@ -96,22 +82,7 @@ export default function GeneratorPage() {
   
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const [generatingDhikr, setGeneratingDhikr] = useState('');
-
-  useEffect(() => {
-    if (!isGenerating && generatedHtml && (window as any).MathJax) {
-      setTimeout(() => {
-        try {
-          if (typeof (window as any).MathJax.typesetPromise === 'function') {
-            (window as any).MathJax.typesetPromise();
-          }
-        } catch (e) {
-          console.error("MathJax error", e);
-        }
-      }, 100);
-    }
-  }, [generatedHtml, isGenerating]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -123,19 +94,10 @@ export default function GeneratorPage() {
     }
     return () => clearInterval(interval);
   }, [isGenerating]);
-  useEffect(() => {
-    if (generationType === 'visual' && !designStyle.startsWith('visual_')) {
-      setDesignStyle('visual_nature');
-    } else if (generationType !== 'visual' && designStyle.startsWith('visual_')) {
-      setDesignStyle('style1');
-    }
-  }, [generationType, designStyle]);
-
   const [previewFontSize, setPreviewFontSize] = useState(16);
   const [docColor, setDocColor] = useState('#1e40af');
   const [documentLanguage, setDocumentLanguage] = useState('ar');
   const [includeWatermark, setIncludeWatermark] = useState(false);
-  const [isActivatingCode, setIsActivatingCode] = useState(false);
 
   // Scaling logic
   const containerRef = useRef<HTMLDivElement>(null);
@@ -266,28 +228,22 @@ export default function GeneratorPage() {
 
   const isFreeMode = userData && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com' && !userData.isPro;
 
-  let designStyles = [
+  const designStyles = [
     { id: 'style1', label: 'كلاسيكي', icon: BookOpen, color: '#1e40af', twColor: 'text-blue-600', twBg: 'bg-blue-100', twBorder: 'border-blue-200' },
     { id: 'style5', label: 'داكن', icon: Printer, color: '#334155', twColor: 'text-slate-700', twBg: 'bg-slate-200', twBorder: 'border-slate-300' },
-    { id: 'style2', label: 'إبداعي', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200', isPro: true },
-    { id: 'style3', label: 'عصري', icon: Sparkles, color: '#059669', twColor: 'text-emerald-600', twBg: 'bg-emerald-100', twBorder: 'border-emerald-200', isPro: true },
-    { id: 'style6', label: 'هندسي', icon: Hexagon, color: '#0891b2', twColor: 'text-cyan-600', twBg: 'bg-cyan-100', twBorder: 'border-cyan-200', isPro: true },
-    { id: 'style7', label: 'مرح', icon: Smile, color: '#db2777', twColor: 'text-pink-600', twBg: 'bg-pink-100', twBorder: 'border-pink-200', isPro: true },
-    { id: 'style8', label: 'أكاديمي', icon: GraduationCap, color: '#4f46e5', twColor: 'text-indigo-600', twBg: 'bg-indigo-100', twBorder: 'border-indigo-200', isPro: true },
-    { id: 'style9', label: 'ناعم', icon: Heart, color: '#e11d48', twColor: 'text-rose-600', twBg: 'bg-rose-100', twBorder: 'border-rose-200', isPro: true },
-    { id: 'style10', label: 'بني', icon: Coffee, color: '#92400e', twColor: 'text-orange-800', twBg: 'bg-orange-100', twBorder: 'border-orange-200', isPro: true },
-    { id: 'style13', label: 'خارق للعادة', icon: Layers, color: '#0369a1', twColor: 'text-sky-700', twBg: 'bg-sky-100', twBorder: 'border-sky-200', isPro: true },
-    { id: 'style14', label: 'طبيعي', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200', isPro: true },
-    { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200', isPro: true }
+    ...(isFreeMode ? [] : [
+      { id: 'style2', label: 'إبداعي', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200' },
+      { id: 'style3', label: 'عصري', icon: Sparkles, color: '#059669', twColor: 'text-emerald-600', twBg: 'bg-emerald-100', twBorder: 'border-emerald-200' },
+      { id: 'style6', label: 'هندسي', icon: Hexagon, color: '#0891b2', twColor: 'text-cyan-600', twBg: 'bg-cyan-100', twBorder: 'border-cyan-200' },
+      { id: 'style7', label: 'مرح', icon: Smile, color: '#db2777', twColor: 'text-pink-600', twBg: 'bg-pink-100', twBorder: 'border-pink-200' },
+      { id: 'style8', label: 'أكاديمي', icon: GraduationCap, color: '#4f46e5', twColor: 'text-indigo-600', twBg: 'bg-indigo-100', twBorder: 'border-indigo-200' },
+      { id: 'style9', label: 'ناعم', icon: Heart, color: '#e11d48', twColor: 'text-rose-600', twBg: 'bg-rose-100', twBorder: 'border-rose-200' },
+      { id: 'style10', label: 'بني', icon: Coffee, color: '#92400e', twColor: 'text-orange-800', twBg: 'bg-orange-100', twBorder: 'border-orange-200' },
+      { id: 'style13', label: 'خارق للعادة', icon: Layers, color: '#0369a1', twColor: 'text-sky-700', twBg: 'bg-sky-100', twBorder: 'border-sky-200' },
+      { id: 'style14', label: 'طبيعي', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200' },
+      { id: 'style15', label: 'ذهبي', icon: Star, color: '#ca8a04', twColor: 'text-yellow-600', twBg: 'bg-yellow-100', twBorder: 'border-yellow-200' }
+    ])
   ];
-
-  if (generationType === 'visual') {
-    designStyles = [
-      { id: 'visual_nature', label: 'تفاعلي - طبيعة (أخضر)', icon: Leaf, color: '#65a30d', twColor: 'text-lime-600', twBg: 'bg-lime-100', twBorder: 'border-lime-200' },
-      { id: 'visual_elegant', label: 'تفاعلي - أناقة (بنفسجي)', icon: Palette, color: '#9333ea', twColor: 'text-purple-600', twBg: 'bg-purple-100', twBorder: 'border-purple-200' },
-      { id: 'visual_geometric', label: 'تفاعلي - هندسي (برتقالي)', icon: Hexagon, color: '#f97316', twColor: 'text-orange-600', twBg: 'bg-orange-100', twBorder: 'border-orange-200' }
-    ];
-  }
 
   const contentStyles = [
     { id: 'concise', label: 'مختصر هادف', icon: Zap },
@@ -298,9 +254,11 @@ export default function GeneratorPage() {
   const pageFrames = [
     { id: 'none', label: 'بدون إطار' },
     { id: 'simple', label: 'إطار بسيط' },
-    { id: 'double', label: 'إطار مزدوج', isPro: true },
-    { id: 'ornate', label: 'إطار مزخرف مميز', isPro: true },
-    { id: '3d', label: 'إطار 3D', isPro: true }
+    ...(isFreeMode ? [] : [
+      { id: 'double', label: 'إطار مزدوج' },
+      { id: 'ornate', label: 'إطار مزخرف مميز' },
+      { id: '3d', label: 'إطار 3D' }
+    ])
   ];
 
   const handleDesignStyleChange = (styleId: string) => {
@@ -313,42 +271,50 @@ export default function GeneratorPage() {
   };
 
   const profileInputRef = useRef<HTMLInputElement>(null);
-  const handleProfileImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && userData) {
+    if (file) {
       setSelectedProfileImage(file);
       setProfileImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleProfileSave = async () => {
+    if (!selectedProfileImage || !userData) return;
+    setIsUploadingProfile(true);
+    setUploadProgress(10);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedProfileImage);
+      formData.append('upload_preset', 'ml_default');
       
-      setIsUploadingProfile(true);
-      setUploadProgress(10);
-      try {
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => Math.min(prev + 10, 90));
-        }, 500);
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
 
-        const url = await uploadImage(file, setUploadProgress);
-        
-        clearInterval(progressInterval);
-        setUploadProgress(100);
+      const response = await fetch('https://api.cloudinary.com/v1_1/doaxziqm7/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
 
-        if(url) {
-          await updateDoc(doc(db, 'users', userData.uid), {
-            profilePic: url
-          });
-          await refreshUserData();
-          
-          // We intentionally do not clear profileImagePreview so it stays visible instantly
-          // and avoids flickering while Firestore syncs or reloads.
-        }
-      } catch (error) {
-        console.error('Upload error:', error);
-        alert('حدث خطأ أثناء رفع الصورة');
+      if(data.secure_url) {
+        await updateDoc(doc(db, 'users', userData.uid), {
+          profilePic: data.secure_url
+        });
+        refreshUserData();
         setSelectedProfileImage(null);
         setProfileImagePreview(null);
-      } finally {
-        setIsUploadingProfile(false);
-        setUploadProgress(0);
       }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('حدث خطأ أثناء رفع الصورة');
+    } finally {
+      setIsUploadingProfile(false);
+      setUploadProgress(0);
     }
   };
 
@@ -367,23 +333,17 @@ export default function GeneratorPage() {
       return;
     }
 
-    if (userData.role !== 'admin' && (userData.generationsRemaining || 0) <= 0) {
+    if (userData.generationsRemaining <= 0) {
       alert('عذراً، لقد استنفدت عدد التوليدات المتاحة لك. الرجاء التواصل مع الإدارة لتجديد الاشتراك.');
       return;
     }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
 
     if (soundEnabled) soundManager.playGenerateStart();
     setIsGenerating(true);
     setGeneratedHtml('');
     
     let subjectInfo: SubjectInfo = {};
-    if (generationType === 'memo' || generationType === 'summary' || generationType === 'visual' || generationType.startsWith('cutout')) {
+    if (generationType === 'memo' || generationType === 'summary' || generationType.startsWith('cutout')) {
       subjectInfo = { section: memoSection, domain: memoDomain, content: memoContent };
     } else {
       subjectInfo = { 
@@ -404,7 +364,6 @@ export default function GeneratorPage() {
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
-        signal: abortController.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           generationType,
@@ -418,77 +377,52 @@ export default function GeneratorPage() {
           aiPrompt
         })
       });
-
-      if (!res.ok) {
-         if (res.status === 504) throw new Error('انتهى وقت الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
-         const text = await res.text();
-         let errorMessage = text || 'خطأ في الخادم (Server Error)';
-         try { 
-            const data = JSON.parse(text); 
-            if (data.error) errorMessage = data.error;
-         } catch(e) { /* use raw text */ }
-         throw new Error(errorMessage);
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("Stream not supported by browser");
-
-      const decoder = new TextDecoder();
-      let streamedHtml = '';
-      let lastRenderTime = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        streamedHtml += chunk;
-        
-        // Show partial content, throttled to avoid freezing the browser
-        const now = Date.now();
-        if (now - lastRenderTime > 300) {
-          lastRenderTime = now;
-          let displayHtml = streamedHtml.replace(/```html/gi, '').replace(/```/g, '');
-          setGeneratedHtml(displayHtml);
-        }
-      }
-
-      let safeHtml = streamedHtml;
-      safeHtml = safeHtml.replace(/```html/gi, '').replace(/```/g, '');
-      safeHtml = safeHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
-      safeHtml = safeHtml.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-      safeHtml = safeHtml.replace(/position\s*:\s*fixed/gi, 'position: absolute');
-      safeHtml = safeHtml.replace(/100vw/gi, '100%').replace(/100vh/gi, '100%');
-
+      let data;
       try {
-        const docHtml = new DOMParser().parseFromString(safeHtml, 'text/html');
-        safeHtml = docHtml.body.innerHTML;
-      } catch (parseError) {
-        console.error("DOMParser error:", parseError);
+        if (!res.ok) {
+           if (res.status === 504) throw new Error('انتهى وقت الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
+           const text = await res.text();
+           try { data = JSON.parse(text); } catch(e) { throw new Error(text || 'خطأ في الخادم (Server Error)'); }
+        } else {
+           data = await res.json();
+        }
+      } catch (e: any) {
+        throw new Error(e.message || 'Server returned an invalid response. Please try again.');
+      }
+      
+      if (data?.error) throw new Error(data.error);
+      
+      // Strip any <style> tags to prevent the AI from accidentally corrupting the global app layout
+      let safeHtml = data.content;
+      if (typeof safeHtml === 'string') {
+        safeHtml = safeHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
+        // Use DOMParser to ensure all tags are perfectly balanced so it doesn't break React's DOM tree
+        try {
+          const doc = new DOMParser().parseFromString(safeHtml, 'text/html');
+          safeHtml = doc.body.innerHTML;
+        } catch (parseError) {
+          console.error("DOMParser error:", parseError);
+        }
       }
       
       setGeneratedHtml(safeHtml);
       
       // Update generation quota in Firestore
-      if (userData.role !== 'admin') {
-        try {
-          const userRef = doc(db, 'users', userData.uid);
-          await updateDoc(userRef, {
-            generationsRemaining: increment(-1),
-            totalGenerations: increment(1)
-          });
-          refreshUserData();
-        } catch (err) {
-          console.error('Error updating quota:', err);
-        }
+      try {
+        const { doc, updateDoc, increment } = await import('firebase/firestore');
+        const { db } = await import('../lib/firebase');
+        const userRef = doc(db, 'users', userData.uid);
+        await updateDoc(userRef, {
+          generationsRemaining: increment(-1),
+          totalGenerations: increment(1)
+        });
+        refreshUserData();
+      } catch (err) {
+        console.error('Error updating quota:', err);
       }
 
       if (soundEnabled) soundManager.playGenerateComplete();
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('Generation aborted by user.');
-        return;
-      }
       console.error(err);
       alert(err.message || 'حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.');
     } finally {
@@ -530,7 +464,7 @@ export default function GeneratorPage() {
     else if (generationType === 'series') gradient = 'from-emerald-500 via-teal-600 to-emerald-500 shadow-emerald-500/50';
     else if (generationType === 'summary') gradient = 'from-amber-500 via-orange-600 to-amber-500 shadow-amber-500/50';
     
-    return `w-full mt-6 bg-gradient-to-r ${gradient} bg-size-200 hover:bg-pos-100 text-white p-4 rounded-xl font-extrabold text-lg shadow-xl flex flex-col items-center justify-center min-h-[72px] gap-1 transition-all overflow-hidden relative`;
+    return `w-full mt-6 bg-gradient-to-r ${gradient} bg-size-200 hover:bg-pos-100 text-white p-4 rounded-xl font-extrabold text-lg shadow-xl flex flex-col items-center justify-center min-h-[72px] gap-1 disabled:opacity-90 transition-all transform hover:-translate-y-1 active:scale-95 overflow-hidden relative`;
   };
 
   const exportToPDF = async () => {
@@ -575,7 +509,6 @@ export default function GeneratorPage() {
       else if (generationType === 'test') title = 'تقويم';
       else if (generationType === 'series') title = 'سلسلة تمارين';
       else if (generationType === 'summary') title = 'ملخص';
-      else if (generationType === 'visual') title = 'وثيقة تفاعلية';
       else if (generationType.startsWith('cutout')) title = 'قصاصات';
       
       const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.pdf`;
@@ -624,7 +557,6 @@ export default function GeneratorPage() {
     else if (generationType === 'test') title = 'تقويم';
     else if (generationType === 'series') title = 'سلسلة تمارين';
     else if (generationType === 'summary') title = 'ملخص';
-    else if (generationType === 'visual') title = 'وثيقة تفاعلية';
     else if (generationType.startsWith('cutout')) title = 'قصاصات';
     
     const fileName = `${title}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.doc`;
@@ -723,51 +655,32 @@ export default function GeneratorPage() {
           {/* Logo Section */}
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0 relative overflow-hidden rounded-xl p-1">
             <div className="absolute inset-0 animate-shine-sweep mix-blend-overlay opacity-80 z-20"></div>
-            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-emerald-400 via-teal-500 to-indigo-600 p-0.5 shadow-lg shadow-teal-500/30 shrink-0 overflow-hidden group">
-              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-teal-500/30 relative">
-                 <GraduationCap className="w-5 h-5 md:w-8 md:h-8 text-teal-400 absolute group-hover:scale-110 transition-transform duration-300" />
-                 <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-emerald-300 absolute bottom-1 right-1 opacity-70 group-hover:opacity-100 transition-opacity" />
+            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-700 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 overflow-hidden group">
+              <div className="w-full h-full bg-[#0a0a0a] rounded-[10px] flex items-center justify-center overflow-hidden border border-amber-500/30">
+                 <img src="/icon.png" alt="Logo" className="w-full h-full object-cover rounded-[10px] hidden group-hover:block" onError={(e) => e.currentTarget.style.display = 'none'} />
+                 <span className="text-xl md:text-2xl font-bold bg-gradient-to-br from-amber-200 to-amber-600 bg-clip-text text-transparent group-hover:hidden">AI</span>
               </div>
             </div>
-            <div className="flex flex-col shrink-0 truncate justify-center ml-2">
-              <div className="hidden sm:flex items-center gap-1.5" dir="rtl">
-                <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-l from-emerald-300 via-teal-400 to-indigo-400 tracking-tight leading-none truncate font-['Cairo',sans-serif]">
-                  المربي DZ
+            <div className="flex flex-col shrink-0 truncate">
+              <div className="hidden sm:flex items-center gap-1.5" dir="ltr">
+                <h1 className="text-base md:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
+                  PRO GÉNÉRATEUR
                 </h1>
+                <span className="text-lg drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
               </div>
-              <div className="sm:hidden flex items-center gap-1" dir="rtl">
-                <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-l from-emerald-300 via-teal-400 to-indigo-400 tracking-tight leading-none truncate font-['Cairo',sans-serif]">
-                  المربي DZ
+              <div className="sm:hidden flex items-center gap-1" dir="ltr">
+                <h1 className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight leading-none truncate">
+                  PRO AI
                 </h1>
+                <span className="text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse">🇩🇿</span>
               </div>
-              <p className="hidden sm:block text-[9px] md:text-xs text-teal-500/80 font-bold mt-0.5 tracking-wide truncate">المساعد الذكي للأستاذ</p>
+              <p className="hidden sm:block text-[9px] md:text-xs text-amber-500/80 font-bold mt-1 tracking-wide truncate">المساعد الذكي للأستاذ</p>
             </div>
           </div>
 
           {/* Actions Section */}
-          <div className="flex items-center gap-2 md:gap-4 shrink-0 py-1">
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 py-1">
             
-            {/* Profile Picture */}
-            <div className="flex items-center gap-1.5 md:gap-2">
-              <span className="hidden sm:block text-[11px] md:text-xs font-semibold text-amber-100 truncate max-w-[80px]">
-                {userData?.firstName || "مستخدم"}
-              </span>
-              <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
-              <button 
-                onClick={() => profileInputRef.current?.click()}
-                className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] relative group"
-                title="تغيير الصورة الشخصية"
-              >
-                {(profileImagePreview || userData?.profilePic) ? (
-                  <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.firstName || 'U')}&background=random` }} />
-                ) : (
-                  <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
-                    <User size={14} />
-                  </div>
-                )}
-              </button>
-            </div>
-
             {/* Grid for stacking tool buttons */}
             <div className="grid grid-rows-2 grid-flow-col gap-1 md:gap-1.5 items-center">
               <button 
@@ -783,23 +696,6 @@ export default function GeneratorPage() {
                 )}
               </button>
               
-              <div className="flex flex-col items-center justify-center gap-1">
-                <button 
-                  onClick={() => expertChatEmitter.dispatchEvent(new Event('open'))}
-                  className="relative rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 hover:from-amber-500/40 hover:to-orange-600/40 border border-amber-500/50 text-amber-400 transition-all flex items-center justify-center w-9 h-9 md:w-10 md:h-10 group shadow-[0_0_15px_rgba(245,158,11,0.3)] overflow-hidden"
-                  title="الخبير التربوي"
-                >
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
-                  {(userData?.expertAvatar || localStorage.getItem('expertAvatar')) ? (
-                    <img src={userData?.expertAvatar || localStorage.getItem('expertAvatar')!} alt="Expert" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                  ) : (
-                    <Bot size={22} className="group-hover:scale-110 transition-transform" />
-                  )}
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse z-20"></span>
-                </button>
-                <span className="text-[9px] md:text-[10px] font-semibold text-amber-400/90 whitespace-nowrap">الخبير التربوي</span>
-              </div>
-
               <button 
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 className="p-1 md:p-1.5 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center w-9 h-9 md:w-10 md:h-10"
@@ -831,49 +727,53 @@ export default function GeneratorPage() {
               <div className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center">
                 <input type="file" ref={bgInputRef} onChange={handleAppBgUpload} className="hidden" accept="image/*" />
                 <button 
-                  onClick={() => {
-                    if (isFreeMode) {
-                      alert('هذه الخاصية متاحة للمشتركين فقط. يرجى الترقية!');
-                      return;
-                    }
-                    bgInputRef.current?.click();
-                  }}
-                  className="w-full h-full rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center relative group"
-                  title="تغيير صورة الخلفية (للمشتركين فقط)"
+                  onClick={() => bgInputRef.current?.click()}
+                  className="w-full h-full rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-amber-900/30 text-amber-400 transition-colors flex items-center justify-center"
+                  title="تغيير صورة الخلفية"
                 >
                   <ImagePlus size={18} />
-                  {isFreeMode && (
-                    <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center backdrop-blur-[1px]">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 drop-shadow-md"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    </div>
-                  )}
                 </button>
               </div>
 
-              <div className="flex items-center justify-center bg-[#1a1a1a] rounded-lg border border-teal-900/30 w-9 h-9 md:w-10 md:h-10 relative group" title="لغة إنشاء المحتوى">
+              <div className="hidden sm:flex items-center justify-center bg-[#1a1a1a] rounded-lg border border-amber-900/30 w-9 h-9 md:w-10 md:h-10">
                 <select 
                   value={documentLanguage} 
                   onChange={(e) => setDocumentLanguage(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                  className="bg-transparent border-none text-xs font-bold text-amber-100 outline-none w-full h-full text-center cursor-pointer appearance-none px-1"
+                  title="تغيير اللغة"
                 >
-                  <option value="ar">العربية (AR)</option>
-                  <option value="fr">الفرنسية (FR)</option>
-                  <option value="en">الإنجليزية (EN)</option>
+                  <option value="ar">AR</option>
+                  <option value="fr">FR</option>
+                  <option value="en">EN</option>
                 </select>
-                <div className="flex items-center justify-center w-full h-full pointer-events-none text-teal-400 font-bold text-xs uppercase group-hover:text-teal-300 transition-colors">
-                  {documentLanguage}
-                </div>
               </div>
             </div>
             
             <div className="w-px h-12 bg-amber-900/50 mx-0.5 md:mx-1"></div>
             
-            {/* Admin controls */}
+            {/* User & Admin controls */}
             <div className="flex items-center gap-1.5 md:gap-2">
-              <div className="flex flex-col gap-1">
-                <button onClick={() => profileModalEmitter.dispatchEvent(new Event('open'))} className="p-1 md:p-1.5 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="تحديث الملف الشخصي">
-                  <Settings size={14} />
+              <div className="flex flex-col items-center gap-1">
+                <input type="file" ref={profileInputRef} onChange={handleProfileImageSelect} className="hidden" accept="image/*" />
+                <button 
+                  onClick={() => profileInputRef.current?.click()}
+                  className="w-7 h-7 md:w-9 md:h-9 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] relative group"
+                  title="تغيير الصورة الشخصية"
+                >
+                  {(profileImagePreview || userData?.profilePic) ? (
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-700 transition-colors">
+                      <User size={14} />
+                    </div>
+                  )}
                 </button>
+                <span className="text-[9px] md:text-[10px] font-semibold text-amber-200 max-w-[40px] md:max-w-[60px] truncate text-center">
+                  {userData?.firstName || "مستخدم"}
+                </span>
+              </div>
+              
+              <div className="flex flex-col gap-1">
                 {userData && (userData.role === 'admin' || userData.email === 'dalinadjib1990@gmail.com') && (
                   <button onClick={() => navigate('/admin')} className="p-1 md:p-1.5 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="لوحة التحكم">
                     <Shield size={14} />
@@ -904,107 +804,95 @@ export default function GeneratorPage() {
               <div className="flex flex-col items-center gap-2">
                 <button 
                   onClick={() => profileInputRef.current?.click()}
-                  className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] relative group cursor-pointer"
+                  className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-2 ring-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)] relative group"
                   title="تغيير الصورة الشخصية"
                 >
                   {(profileImagePreview || userData?.profilePic) ? (
-                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.firstName || 'U')}&background=random` }} />
+                    <img src={profileImagePreview || userData!.profilePic} alt="Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
                       <User size={24} />
                     </div>
                   )}
                 </button>
-                {isUploadingProfile && (
+                {selectedProfileImage && (
                   <div className="flex flex-col items-center gap-1 w-full mt-1">
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold animate-pulse">جاري الحفظ...</span>
-                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1 mt-1 overflow-hidden">
-                      <div 
-                        className="bg-indigo-500 h-1 rounded-full transition-all duration-300" 
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
+                    <div className="flex gap-1 w-full justify-center">
+                      <button 
+                        onClick={handleProfileSave}
+                        disabled={isUploadingProfile}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] px-2 py-1 rounded disabled:opacity-50"
+                      >
+                        {isUploadingProfile ? 'جاري الحفظ...' : 'حفظ'}
+                      </button>
+                      <button 
+                        onClick={handleProfileCancel}
+                        disabled={isUploadingProfile}
+                        className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-[10px] px-2 py-1 rounded disabled:opacity-50"
+                      >
+                        إلغاء
+                      </button>
                     </div>
+                    {isUploadingProfile && (
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1 mt-1 overflow-hidden">
+                        <div 
+                          className="bg-indigo-500 h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
             {/* Quota Progress Bar */}
-            {userData?.role === 'admin' ? (
-              <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-                <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                  حساب مسؤول - رصيد غير محدود
-                </h3>
+            <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex justify-between items-end mb-2">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">التوليدات المتبقية</h3>
+                  <p className="text-xs text-slate-500">رصيد حسابك الحالي</p>
+                </div>
+                <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 font-mono">
+                  {userData?.generationsRemaining || 0}
+                </div>
               </div>
-            ) : (
-              <div className="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-center items-center mb-2">
-                  <h3 className="text-sm font-bold text-red-600 dark:text-red-400">
-                    لترقية حسابك اتصل بالمطور
-                  </h3>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-3">
-                  <div 
-                    className="h-2.5 rounded-full bg-red-500 transition-all duration-500"
-                    style={{ width: `${Math.min(100, ((userData?.generationsRemaining || 0) / Math.max(1, (userData?.generationsRemaining || 0) + (userData?.totalGenerations || 0))) * 100)}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="أدخل كود التفعيل هنا..." 
-                    className="flex-1 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 uppercase"
-                    id="activation-code-input"
-                    dir="ltr"
-                  />
-                  <button 
-                    onClick={async () => {
-                      const input = document.getElementById('activation-code-input') as HTMLInputElement;
-                      const rawCode = input.value.toUpperCase().trim();
-                      const normalizedInput = rawCode.replace(/[^A-Z0-9]/g, '');
-                      if(!normalizedInput) {
-                        alert('الرجاء إدخال كود التفعيل أولاً.');
-                        return;
-                      }
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-3">
+                <div 
+                  className={`h-2.5 rounded-full ${((userData?.generationsRemaining || 0) < 10) ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
+                  style={{ width: `${Math.min(100, ((userData?.generationsRemaining || 0) / 300) * 100)}%` }}
+                ></div>
+              </div>
+              
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="أدخل كود التفعيل هنا..." 
+                  className="flex-1 text-xs p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 uppercase"
+                  id="activation-code-input"
+                  dir="ltr"
+                />
+                <button 
+                  onClick={async () => {
+                    const input = document.getElementById('activation-code-input') as HTMLInputElement;
+                    const code = input.value.trim().toUpperCase();
+                    if(!code) return;
                     
-                    setIsActivatingCode(true);
                     try {
-                      // 1. Try exact match
-                      let querySnapshot = await getDocs(query(collection(db, 'activation_codes'), where('code', '==', rawCode)));
+                      // Dynamically import firestore to avoid bloat
+                      const { collection, getDocs, query, where, updateDoc, doc, increment } = await import('firebase/firestore');
+                      const { db } = await import('../lib/firebase');
                       
-                      // 2. Try match with stripped symbols
-                      if (querySnapshot.empty && rawCode !== normalizedInput) {
-                        querySnapshot = await getDocs(query(collection(db, 'activation_codes'), where('code', '==', normalizedInput)));
-                      }
-
-                      let codeDoc = null;
-                      if (!querySnapshot.empty) {
-                        codeDoc = querySnapshot.docs[0];
-                      } else {
-                        // 3. Fallback: Search all unused codes manually to bypass any DB formatting mismatches
-                        const allUnusedCodes = await getDocs(query(collection(db, 'activation_codes'), where('isUsed', '==', false)));
-                        codeDoc = allUnusedCodes.docs.find(doc => {
-                          const dbCode = doc.data().code || '';
-                          return dbCode.toUpperCase().replace(/[^A-Z0-9]/g, '') === normalizedInput;
-                        });
-                      }
+                      const q = query(collection(db, 'activation_codes'), where('code', '==', code), where('isUsed', '==', false));
+                      const querySnapshot = await getDocs(q);
                       
-                      if(!codeDoc) {
-                        alert('الكود غير صالح (غير موجود). تأكد من صحة الكود وتأكد من عدم الخلط بين حرف O ورقم 0.');
-                        setIsActivatingCode(false);
+                      if(querySnapshot.empty) {
+                        alert('الكود غير صالح أو تم استخدامه من قبل.');
                         return;
                       }
                       
-                      const codeData = codeDoc.data();
-                      
-                      if(codeData.isUsed) {
-                        alert('هذا الكود تم استخدامه من قبل.');
-                        setIsActivatingCode(false);
-                        return;
-                      }
-                      
-                      const generationsToAdd = codeData.generations || 500;
+                      const codeDoc = querySnapshot.docs[0];
+                      const generationsToAdd = codeDoc.data().generations || 250;
                       
                       // Mark code as used
                       await updateDoc(doc(db, 'activation_codes', codeDoc.id), {
@@ -1013,31 +901,26 @@ export default function GeneratorPage() {
                         usedAt: new Date()
                       });
                       
-                      // Add generations to user and unlock Pro
+                      // Add generations to user
                       await updateDoc(doc(db, 'users', userData!.uid), {
-                        generationsRemaining: increment(generationsToAdd),
-                        isPro: true
+                        generationsRemaining: increment(generationsToAdd)
                       });
                       
                       input.value = '';
-                      alert(`تم تفعيل الوضع الاحترافي وشحن رصيدك بنجاح!`);
+                      alert(`تم شحن رصيدك بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
                       refreshUserData();
                       
-                    } catch (error: any) {
+                    } catch (error) {
                       console.error('Error redeeming code:', error);
-                      alert('حدث خطأ أثناء تفعيل الكود: ' + error.message);
-                    } finally {
-                      setIsActivatingCode(false);
+                      alert('حدث خطأ أثناء تفعيل الكود.');
                     }
                   }}
-                  disabled={isActivatingCode}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors flex items-center justify-center min-w-[60px]"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors"
                 >
-                  {isActivatingCode ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'تفعيل'}
+                  تفعيل
                 </button>
               </div>
             </div>
-            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
@@ -1067,17 +950,7 @@ export default function GeneratorPage() {
             <div className="mb-4">
               <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider">المادة</label>
               <div className="relative">
-                <select value={teacherInfo.subject} onChange={e => {
-                  const newSubject = e.target.value;
-                  setTeacherInfo({...teacherInfo, subject: newSubject});
-                  if (newSubject.includes('فرنسي') || newSubject.includes('francais') || newSubject.includes('french')) {
-                    setDocumentLanguage('fr');
-                  } else if (newSubject.includes('انجليزي') || newSubject.includes('english')) {
-                    setDocumentLanguage('en');
-                  } else if (newSubject) {
-                    setDocumentLanguage('ar'); // Default back to Arabic for other subjects if they pick one
-                  }
-                }} className="w-full pl-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow appearance-none">
+                <select value={teacherInfo.subject} onChange={e => setTeacherInfo({...teacherInfo, subject: e.target.value})} className="w-full pl-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-shadow appearance-none">
                   <option value="">اختر المادة...</option>
                   {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -1198,7 +1071,7 @@ export default function GeneratorPage() {
             </div>
 
             {/* Dynamic Inputs based on type */}
-            {(generationType === 'memo' || generationType === 'summary' || generationType === 'visual' || generationType.startsWith('cutout')) ? (
+            {(generationType === 'memo' || generationType === 'summary' || generationType.startsWith('cutout')) ? (
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
                   <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400 uppercase tracking-wider">المقطع</label>
@@ -1324,49 +1197,35 @@ export default function GeneratorPage() {
               <div>
                 <label className="block text-xs font-bold mb-3 text-slate-800 dark:text-slate-200 uppercase tracking-wider">ستايل التصميم والألوان</label>
                 <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                  {designStyles.map(style => {
-                    const isLocked = isFreeMode && style.isPro;
-                    return (
-                      <button
-                        key={style.id}
-                        onClick={() => {
-                          if (isLocked) {
-                            alert('هذا التصميم متاح للمشتركين فقط. يرجى الترقية لفتحه!');
-                            return;
-                          }
-                          handleDesignStyleChange(style.id);
+                  {designStyles.map(style => (
+                    <button
+                      key={style.id}
+                      onClick={() => handleDesignStyleChange(style.id)}
+                      className={`relative flex flex-col items-center justify-center gap-2 transition-all group ${
+                        designStyle === style.id ? 'transform scale-110' : 'hover:transform hover:scale-105 hover:-translate-y-1 opacity-80 hover:opacity-100'
+                      }`}
+                      style={{ width: '70px' }}
+                    >
+                      {/* Magic Ball Element */}
+                      <div 
+                        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg relative overflow-hidden transition-all duration-300 ${designStyle === style.id ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
+                        style={{
+                          background: designStyle === style.id 
+                            ? `radial-gradient(circle at 30% 30%, ${style.color}cc 0%, ${style.color} 60%, #000000 150%)` 
+                            : 'radial-gradient(circle at 30% 30%, #f1f5f9 0%, #cbd5e1 60%, #94a3b8 150%)',
+                          color: designStyle === style.id ? 'white' : '#64748b',
+                          boxShadow: designStyle === style.id ? `0 10px 15px -3px ${style.color}60` : '0 4px 6px -1px rgba(0,0,0,0.1)'
                         }}
-                        className={`relative flex flex-col items-center justify-center gap-2 transition-all group ${
-                          designStyle === style.id ? 'transform scale-110' : 'hover:transform hover:scale-105 hover:-translate-y-1 opacity-80 hover:opacity-100'
-                        } ${isLocked ? 'grayscale opacity-60 hover:grayscale-0' : ''}`}
-                        style={{ width: '70px' }}
                       >
-                        {isLocked && (
-                          <div className="absolute top-0 right-0 z-20 bg-slate-900/80 rounded-full p-1 shadow-sm border border-slate-700/50">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                          </div>
-                        )}
-                        {/* Magic Ball Element */}
-                        <div 
-                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg relative overflow-hidden transition-all duration-300 ${designStyle === style.id ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900' : ''}`}
-                          style={{
-                            background: designStyle === style.id 
-                              ? `radial-gradient(circle at 30% 30%, ${style.color}cc 0%, ${style.color} 60%, #000000 150%)` 
-                              : 'radial-gradient(circle at 30% 30%, #f1f5f9 0%, #cbd5e1 60%, #94a3b8 150%)',
-                            color: designStyle === style.id ? 'white' : '#64748b',
-                            boxShadow: designStyle === style.id ? `0 10px 15px -3px ${style.color}60` : '0 4px 6px -1px rgba(0,0,0,0.1)'
-                          }}
-                        >
-                          {/* Specular reflection for magic ball effect */}
-                          <div className="absolute top-1 left-2 w-5 h-3 bg-white opacity-40 rounded-full blur-[1px] -rotate-45 group-hover:opacity-60 transition-opacity" />
-                          <style.icon size={22} className="relative z-10 drop-shadow-md" />
-                        </div>
-                        <span className={`text-[11px] text-center font-bold transition-colors ${designStyle === style.id ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                          {style.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                        {/* Specular reflection for magic ball effect */}
+                        <div className="absolute top-1 left-2 w-5 h-3 bg-white opacity-40 rounded-full blur-[1px] -rotate-45 group-hover:opacity-60 transition-opacity" />
+                        <style.icon size={22} className="relative z-10 drop-shadow-md" />
+                      </div>
+                      <span className={`text-[11px] text-center font-bold transition-colors ${designStyle === style.id ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {style.label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -1374,35 +1233,23 @@ export default function GeneratorPage() {
               <div>
                 <label className="block text-xs font-bold mb-3 text-slate-800 dark:text-slate-200 uppercase tracking-wider">إطار الصفحة</label>
                 <div className="flex flex-wrap gap-3">
-                  {pageFrames.map(frame => {
-                    const isLocked = isFreeMode && frame.isPro;
-                    return (
-                      <button
-                        key={frame.id}
-                        onClick={() => {
-                          if (isLocked) {
-                            alert('هذا الإطار متاح للمشتركين فقط. يرجى الترقية لفتحه!');
-                            return;
-                          }
-                          if (soundEnabled) soundManager.playTabClick();
-                          setPageFrame(frame.id);
-                        }}
-                        className={`flex-1 min-w-[80px] py-3 px-2 rounded-xl border-2 text-xs font-bold transition-all relative group overflow-hidden ${
-                          pageFrame === frame.id 
-                            ? 'bg-slate-800 text-white border-slate-900 shadow-[0_4px_0_0_#0f172a] hover:translate-y-1 hover:shadow-[0_0px_0_0_#0f172a] dark:bg-slate-200 dark:text-slate-900 dark:border-white dark:shadow-[0_4px_0_0_#94a3b8]' 
-                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:-translate-y-1 hover:shadow-[0_4px_0_0_#94a3b8] dark:hover:shadow-[0_4px_0_0_#334155]'
-                        } ${isLocked ? 'opacity-60' : ''}`}
-                      >
-                        {isLocked && (
-                          <div className="absolute top-1 right-1 z-20 text-slate-400 dark:text-slate-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        {frame.label}
-                      </button>
-                    );
-                  })}
+                  {pageFrames.map(frame => (
+                    <button
+                      key={frame.id}
+                      onClick={() => {
+                        if (soundEnabled) soundManager.playTabClick();
+                        setPageFrame(frame.id);
+                      }}
+                      className={`flex-1 min-w-[80px] py-3 px-2 rounded-xl border-2 text-xs font-bold transition-all relative group overflow-hidden ${
+                        pageFrame === frame.id 
+                          ? 'bg-slate-800 text-white border-slate-900 shadow-[0_4px_0_0_#0f172a] hover:translate-y-1 hover:shadow-[0_0px_0_0_#0f172a] dark:bg-slate-200 dark:text-slate-900 dark:border-white dark:shadow-[0_4px_0_0_#94a3b8]' 
+                          : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:-translate-y-1 hover:shadow-[0_4px_0_0_#94a3b8] dark:hover:shadow-[0_4px_0_0_#334155]'
+                      }`}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      {frame.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1430,55 +1277,27 @@ export default function GeneratorPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3 mt-4">
-              {(!generatedHtml) && (
-                <button 
-                  onClick={handleGenerate} 
-                  disabled={isGenerating}
-                  className={`${getGenerateButtonClasses()} ${isGenerating ? 'opacity-100 scale-[0.98] cursor-wait' : 'hover:-translate-y-1 active:scale-95'}`}
-                  style={{ backgroundSize: '200% auto' }}
-                >
-                  {isGenerating && (
-                    <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-                       <div className="absolute -inset-[100%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#00000000_50%,#ffffff_100%)] opacity-50"></div>
-                       <div className="absolute inset-[2px] rounded-[10px] bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 backdrop-blur-xl opacity-90"></div>
-                    </div>
-                  )}
-                  {isGenerating ? (
-                    <div className="flex flex-col items-center gap-1 z-10 relative">
-                      <div className="flex items-center gap-3">
-                        <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span className="text-xl font-bold">جاري التوليد الخارق...</span>
-                      </div>
-                      <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-3 z-10 relative">
-                      <Zap size={22} className="fill-current animate-pulse" />
-                      توليد حصري مميز
-                    </div>
-                  )}
-                </button>
+            <button 
+              onClick={handleGenerate} 
+              disabled={isGenerating}
+              className={getGenerateButtonClasses()}
+              style={{ backgroundSize: '200% auto' }}
+            >
+              {isGenerating ? (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-3">
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>جاري التوليد الخارق...</span>
+                  </div>
+                  <span className="text-sm font-arabic font-bold text-white/90 animate-pulse">{generatingDhikr}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-3">
+                  <Zap size={22} className="fill-current" />
+                  توليد حصري مميز
+                </div>
               )}
-
-              {(isGenerating || generatedHtml) && (
-                <button 
-                  onClick={() => {
-                    if (abortControllerRef.current) {
-                      abortControllerRef.current.abort();
-                    }
-                    if (soundEnabled) soundManager.playTabClick();
-                    setGeneratedHtml('');
-                    setIsGenerating(false);
-                  }} 
-                  className="w-full bg-red-500 hover:bg-red-600 text-white p-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-red-500/30 border border-red-400"
-                >
-                  <X size={22} />
-                  تراجع عن التوليد (إلغاء ومسح)
-                </button>
-              )}
-            </div>
+            </button>
           </div>
         </div>
 

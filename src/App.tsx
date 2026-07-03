@@ -8,8 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { AlertCircle } from 'lucide-react';
 import LoadingScreen from './components/LoadingScreen';
-import TeachersRoom from './components/TeachersRoom';
-import { InstallPWA } from './components/InstallPWA';
+import { TeachersRoom } from './components/TeachersRoom';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -63,7 +62,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
-  const { user, userData, loading, signOut } = useAuth();
+  const { user, userData, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
@@ -73,24 +72,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
     return <Navigate to="/login" />;
   }
 
-  if (userData.isActive === false && userData.role !== 'admin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">حساب موقوف</h2>
-          <p className="text-slate-600 mb-6">لقد تم إيقاف حسابك من قبل الإدارة لانتهاك شروط الاستخدام أو لأسباب أمنية. يرجى التواصل مع الدعم الفني.</p>
-          <button 
-            onClick={() => signOut().then(() => window.location.href = '/login')}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            تسجيل الخروج
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (requireAdmin && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com') {
     return <Navigate to="/" />;
   }
@@ -98,28 +79,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   return <>{children}</>;
 };
 
-import { CompleteProfileModal } from './components/CompleteProfileModal';
-import { ExpertChat } from './components/ExpertChat';
-
-// Add export event emitter for expert chat
-export const expertChatEmitter = new EventTarget();
-export const profileModalEmitter = new EventTarget();
-
 function AppRoutes() {
-  const [isExpertChatOpen, setIsExpertChatOpen] = React.useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
-
-  React.useEffect(() => {
-    const handleExpertOpen = () => setIsExpertChatOpen(true);
-    const handleProfileOpen = () => setIsProfileModalOpen(true);
-    expertChatEmitter.addEventListener('open', handleExpertOpen);
-    profileModalEmitter.addEventListener('open', handleProfileOpen);
-    return () => {
-      expertChatEmitter.removeEventListener('open', handleExpertOpen);
-      profileModalEmitter.removeEventListener('open', handleProfileOpen);
-    }
-  }, []);
-
   return (
     <>
       <Routes>
@@ -143,9 +103,6 @@ function AppRoutes() {
         />
       </Routes>
       <TeachersRoom />
-      <ExpertChat isOpen={isExpertChatOpen} onClose={() => setIsExpertChatOpen(false)} />
-      <CompleteProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
-      <InstallPWA />
     </>
   );
 }

@@ -1,208 +1,560 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, Smile, Check, CheckCheck, Clock, MapPin, BookOpen, GraduationCap, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, getDocs, where, deleteDoc, doc } from 'firebase/firestore';
-import { useAuth, UserData } from '../contexts/AuthContext';
-import { Send, Users, User, Clock, Trash2, X, MessageCircle } from 'lucide-react';
+import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, orderBy, setDoc } from 'firebase/firestore';
+
+export const uploadToCloudinary = async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
+  const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  
+  if (!cloudName || !uploadPreset) {
+    console.warn("Cloudinary not configured. Falling back to base64.");
+    return new Promise((resolve) => {
+      if (onProgress) onProgress(50);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (onProgress) onProgress(100);
+        resolve(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
+    
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(percentComplete);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const response = JSON.parse(xhr.responseText);
+        resolve(response.secure_url);
+      } else {
+        reject(new Error('Upload failed'));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error'));
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+    xhr.send(formData);
+  });
+};
+
+interface Teacher {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  profilePic?: string;
+  wilaya?: string;
+  phase?: string;
+  subject?: string;
+  isOnline?: boolean;
+}
+
+interface ChatSession {
+  id: string;
+  user1Id: string;
+  user2Id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  initiatorId: string;
+  updatedAt: any;
+}
 
 interface Message {
   id: string;
-  text: string;
+  chatId: string;
   senderId: string;
-  senderName: string;
-  senderEmail: string;
-  senderProfilePic?: string;
-  timestamp: any;
+  text: string;
+  imageUrl?: string;
+  createdAt: any;
 }
 
-export default function TeachersRoom() {
+export const TeachersRoom: React.FC = () => {
   const { userData } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [activeChat, setActiveChat] = useState<Teacher | null>(null);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Subscribe to messages
+  // Fetch teachers
   useEffect(() => {
-    if (!userData || !isOpen) return;
+    if (!isOpen || !userData) return;
 
-    const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs: Message[] = [];
-      snapshot.forEach((doc) => {
-        msgs.push({ id: doc.id, ...doc.data() } as Message);
-      });
-      setMessages(msgs);
-      setLoading(false);
-      setTimeout(() => scrollToBottom(), 100);
-    });
-
-    return () => unsubscribe();
-  }, [userData]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !userData) return;
-
-    const msgText = newMessage.trim();
-    setNewMessage('');
-
-    try {
-      await addDoc(collection(db, 'messages'), {
-        text: msgText,
-        senderId: userData.uid,
-        senderName: `${userData.firstName} ${userData.lastName}`,
-        senderEmail: userData.email,
-        senderProfilePic: userData.profilePic || '',
-        timestamp: serverTimestamp(),
-      });
-      scrollToBottom();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      alert('خطأ في إرسال الرسالة.');
-    }
-  };
-
-  const handleDeleteMessage = async (msgId: string) => {
-    if (!userData || (userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com')) return;
-    
-    if (window.confirm('هل أنت متأكد من حذف هذه الرسالة؟')) {
+    const fetchTeachers = async () => {
       try {
-        await deleteDoc(doc(db, 'messages', msgId));
+        const q = query(collection(db, 'users'));
+        const querySnapshot = await getDocs(q);
+        const fetchedTeachers: Teacher[] = [];
+        querySnapshot.forEach((doc) => {
+          if (doc.id !== userData.uid) {
+            fetchedTeachers.push({ uid: doc.id, ...doc.data() } as Teacher);
+          }
+        });
+
+        // Add developer if not present, for demo
+        const devExists = fetchedTeachers.find(t => t.email === 'dalinadjib1990@gmail.com');
+        if (!devExists) {
+          fetchedTeachers.push({
+            uid: 'dev_dali_nadjib',
+            firstName: 'دالي',
+            lastName: 'نجيب',
+            email: 'dalinadjib1990@gmail.com',
+            wilaya: 'الجزائر',
+            phase: 'الجميع',
+            subject: 'المطور',
+            isOnline: true,
+            profilePic: '/icon.png'
+          });
+        }
+
+        // Sorting:
+        // 1. Developer first
+        // 2. Same wilaya
+        // 3. Same phase
+        // 4. Same subject
+        // 5. Random
+        fetchedTeachers.sort((a, b) => {
+          if (a.email === 'dalinadjib1990@gmail.com') return -1;
+          if (b.email === 'dalinadjib1990@gmail.com') return 1;
+          
+          let scoreA = 0;
+          let scoreB = 0;
+          if (a.wilaya === userData.wilaya) scoreA += 3;
+          if (a.phase === userData.phase) scoreA += 2;
+          if (a.subject === userData.subject) scoreA += 1;
+          
+          if (b.wilaya === userData.wilaya) scoreB += 3;
+          if (b.phase === userData.phase) scoreB += 2;
+          if (b.subject === userData.subject) scoreB += 1;
+          
+          if (scoreA !== scoreB) return scoreB - scoreA;
+          return Math.random() - 0.5;
+        });
+
+        setTeachers(fetchedTeachers);
       } catch (error) {
-        console.error('Error deleting message:', error);
+        console.error("Error fetching teachers", error);
       }
+    };
+
+    fetchTeachers();
+  }, [isOpen, userData]);
+
+  // Listen to chat sessions
+  useEffect(() => {
+    if (!isOpen || !userData) return;
+    
+    const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid));
+    const q2 = query(collection(db, 'chat_sessions'), where('user2Id', '==', userData.uid));
+    
+    // In a real app we'd combine or listen to both. For simplicity, we just listen when activeChat is selected.
+  }, [isOpen, userData]);
+
+  useEffect(() => {
+    if (!activeChat || !userData) return;
+
+    const checkSession = async () => {
+      // Find session where (user1 == me AND user2 == active) OR (user1 == active AND user2 == me)
+      // Since Firestore doesn't support OR well without composite indexes, we check both
+      const q1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid), where('user2Id', '==', activeChat.uid));
+      const q2 = query(collection(db, 'chat_sessions'), where('user1Id', '==', activeChat.uid), where('user2Id', '==', userData.uid));
+      
+      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+      
+      let sessionDoc = snap1.empty ? (snap2.empty ? null : snap2.docs[0]) : snap1.docs[0];
+      
+      if (!sessionDoc) {
+        setChatSession(null);
+      } else {
+        setChatSession({ id: sessionDoc.id, ...sessionDoc.data() } as ChatSession);
+        
+        // Listen to session changes
+        const unsubSession = onSnapshot(doc(db, 'chat_sessions', sessionDoc.id), (d) => {
+          if (d.exists()) {
+            setChatSession({ id: d.id, ...d.data() } as ChatSession);
+          }
+        });
+        
+        // Listen to messages
+        const messagesRef = collection(db, 'chat_sessions', sessionDoc.id, 'messages');
+        const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
+        const unsubMessages = onSnapshot(qMsg, (snapshot) => {
+          const msgs: Message[] = [];
+          snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
+          setMessages(msgs);
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        });
+        
+        return () => {
+          unsubSession();
+          unsubMessages();
+        };
+      }
+    };
+    
+    checkSession();
+  }, [activeChat, userData]);
+
+  const startChat = async () => {
+    if (!userData || !activeChat) return;
+    
+    // Developer auto-accepts
+    const status = activeChat.email === 'dalinadjib1990@gmail.com' ? 'accepted' : 'pending';
+    
+    const newSession = {
+      user1Id: userData.uid,
+      user2Id: activeChat.uid,
+      status: status,
+      initiatorId: userData.uid,
+      updatedAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(collection(db, 'chat_sessions'), newSession);
+    setChatSession({ id: docRef.id, ...newSession, updatedAt: new Date() } as ChatSession);
+    
+    if (activeChat.email === 'dalinadjib1990@gmail.com') {
+      // Auto reply from developer
+      await addDoc(collection(db, 'chat_sessions', docRef.id, 'messages'), {
+        chatId: docRef.id,
+        senderId: activeChat.uid,
+        text: 'سوف يتواصل معك الأستاذ المطور dali nadjib رقم الهاتف 0771167330 و ذلك لإرسال كود تفعيل الوضع الاحترافي',
+        createdAt: serverTimestamp()
+      });
     }
   };
 
-  const isAdmin = userData?.role === 'admin' || userData?.email === 'dalinadjib1990@gmail.com';
+  const acceptChat = async () => {
+    if (!chatSession) return;
+    await updateDoc(doc(db, 'chat_sessions', chatSession.id), {
+      status: 'accepted',
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const sendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newMessage.trim() || !chatSession || !userData) return;
+
+    const msgText = newMessage;
+    setNewMessage('');
+    
+    await addDoc(collection(db, 'chat_sessions', chatSession.id, 'messages'), {
+      chatId: chatSession.id,
+      senderId: userData.uid,
+      text: msgText,
+      createdAt: serverTimestamp()
+    });
+    
+    if (activeChat?.email === 'dalinadjib1990@gmail.com') {
+      setTimeout(async () => {
+        await addDoc(collection(db, 'chat_sessions', chatSession.id, 'messages'), {
+          chatId: chatSession.id,
+          senderId: activeChat.uid,
+          text: 'سوف يتواصل معك الأستاذ المطور dali nadjib رقم الهاتف 0771167330 و ذلك لإرسال كود تفعيل الوضع الاحترافي',
+          createdAt: serverTimestamp()
+        });
+      }, 1000);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !chatSession || !userData) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    try {
+      const url = await uploadToCloudinary(file, setUploadProgress);
+      await addDoc(collection(db, 'chat_sessions', chatSession.id, 'messages'), {
+        chatId: chatSession.id,
+        senderId: userData.uid,
+        text: '',
+        imageUrl: url,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert('فشل رفع الصورة');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (!userData) return null;
 
   return (
     <>
-      {/* Floating Button */}
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 z-40 bg-indigo-600 text-white p-4 rounded-full shadow-xl hover:bg-indigo-700 transition-transform hover:scale-110 flex items-center justify-center group"
+      <motion.div
+        drag
+        dragMomentum={false}
+        className="fixed bottom-6 left-6 z-[100] cursor-grab active:cursor-grabbing"
       >
-        <MessageCircle size={24} />
-        <span className="absolute left-full ml-4 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
-          غرفة الأساتذة
-        </span>
-      </button>
+        <div className="relative group">
+          {/* Neon Glow */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-500 via-cyan-500 to-amber-500 rounded-full blur opacity-70 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
+          
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="relative flex items-center justify-center w-16 h-16 rounded-full bg-slate-900 border-2 border-white/20 shadow-2xl overflow-hidden"
+            title="قاعة الأساتذة"
+          >
+            {userData.profilePic ? (
+              <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User size={28} className="text-white" />
+            )}
+            {/* Overlay Icon */}
+            <div className="absolute bottom-0 right-0 bg-indigo-500 rounded-full p-1 border-2 border-slate-900">
+              <MessageCircle size={14} className="text-white" />
+            </div>
+          </button>
+        </div>
+      </motion.div>
 
-      {/* Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4" dir="rtl">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl h-[90vh] sm:h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-200">
-            
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-24 left-6 z-[99] w-[380px] max-w-[calc(100vw-48px)] h-[550px] max-h-[calc(100vh-120px)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+            dir="rtl"
+          >
             {/* Header */}
-            <div className="bg-indigo-600 p-4 flex justify-between items-center text-white shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <Users size={20} className="text-white" />
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex items-center justify-between shadow-md z-10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+              
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="relative">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-fuchsia-500 rounded-full blur-sm opacity-80 animate-pulse"></div>
+                  <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white relative overflow-hidden">
+                    {userData.profilePic ? (
+                      <img src={userData.profilePic} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-full h-full p-2 text-indigo-300" />
+                    )}
+                  </div>
                 </div>
                 <div>
-                  <h2 className="font-bold text-lg leading-tight">غرفة الأساتذة</h2>
-                  <p className="text-indigo-100 text-xs">مساحة للنقاش وتبادل الخبرات</p>
+                  <h3 className="font-bold text-sm leading-tight">{userData.firstName} {userData.lastName}</h3>
+                  <div className="flex items-center gap-2 text-[10px] text-indigo-100 mt-1 opacity-90">
+                    <span className="flex items-center gap-0.5"><MapPin size={10} /> {userData.wilaya || 'الولاية'}</span>
+                    <span className="flex items-center gap-0.5"><GraduationCap size={10} /> {userData.phase || 'الطور'}</span>
+                    <span className="flex items-center gap-0.5"><BookOpen size={10} /> {userData.subject || 'الاختصاص'}</span>
+                  </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <X size={20} />
+              <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors relative z-10">
+                <X size={18} />
               </button>
             </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 flex flex-col gap-4 relative">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-              <MessageCircle size={48} className="mb-4 opacity-50" />
-              <p>لا توجد رسائل بعد. كن أول من يرسل رسالة!</p>
-            </div>
-          ) : (
-            messages.map((msg) => {
-              const isMine = msg.senderId === userData?.uid;
-              const timeString = msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }) : '';
-              
-              return (
-                <div key={msg.id} className={`flex gap-3 max-w-[85%] ${isMine ? 'self-end flex-row-reverse' : 'self-start'}`}>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full shrink-0 overflow-hidden bg-slate-200 dark:bg-slate-700">
-                    {msg.senderProfilePic ? (
-                      <img src={msg.senderProfilePic} alt={msg.senderName} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'U')}&background=random` }} />
+            {/* Content */}
+            <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
+              {!activeChat ? (
+                // Teachers List
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+                  <div className="mb-4">
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="ابحث عن أستاذ..." 
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      <Search size={16} className="absolute right-3 top-2.5 text-slate-400" />
+                    </div>
+                  </div>
+                  
+                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 px-1 uppercase tracking-wider">الأساتذة المتاحين</h4>
+                  
+                  <div className="space-y-2">
+                    {teachers.map(teacher => (
+                      <button 
+                        key={teacher.uid}
+                        onClick={() => setActiveChat(teacher)}
+                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl border border-slate-100 dark:border-slate-700/50 transition-all text-right group"
+                      >
+                        <div className="relative">
+                          <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${teacher.email === 'dalinadjib1990@gmail.com' ? 'border-amber-500' : 'border-indigo-100 dark:border-indigo-900'}`}>
+                            {teacher.profilePic ? (
+                              <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-500">
+                                <User size={20} />
+                              </div>
+                            )}
+                          </div>
+                          {teacher.isOnline !== false && (
+                            <div className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 overflow-hidden">
+                          <div className="flex justify-between items-center mb-0.5">
+                            <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate">
+                              {teacher.firstName} {teacher.lastName}
+                              {teacher.email === 'dalinadjib1990@gmail.com' && <span className="text-amber-500 mr-1" title="المطور">⭐</span>}
+                            </h5>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                            {teacher.wilaya && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><MapPin size={8} /> {teacher.wilaya}</span>}
+                            {teacher.phase && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><GraduationCap size={8} /> {teacher.phase}</span>}
+                            {teacher.subject && <span className="bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><BookOpen size={8} /> {teacher.subject}</span>}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                    
+                    {teachers.length === 0 && (
+                      <div className="text-center py-10 text-slate-500 text-sm">لا يوجد أساتذة متصلين حالياً.</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Chat Window
+                <div className="flex-1 flex flex-col h-full">
+                  <div className="p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+                    <button onClick={() => { setActiveChat(null); setChatSession(null); }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500">
+                      <span className="text-lg">➔</span>
+                    </button>
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 overflow-hidden">
+                      {activeChat.profilePic ? (
+                        <img src={activeChat.profilePic} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-full h-full p-1.5 text-indigo-500" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-white">{activeChat.firstName} {activeChat.lastName}</h4>
+                      <p className="text-[10px] text-emerald-500">متصل الآن</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-opacity-5">
+                    {!chatSession ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center px-6">
+                        <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-500 mb-4">
+                          <MessageCircle size={32} />
+                        </div>
+                        <h3 className="font-bold text-slate-800 dark:text-white mb-2">تواصل مع {activeChat.firstName}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">يجب إرسال دعوة محادثة أولاً لبدء النقاش وتبادل الخبرات.</p>
+                        <button 
+                          onClick={startChat}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 transition-transform active:scale-95"
+                        >
+                          إرسال دعوة للمحادثة
+                        </button>
+                      </div>
+                    ) : chatSession.status === 'pending' ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center px-6">
+                        {chatSession.initiatorId === userData.uid ? (
+                          <>
+                            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center text-amber-500 mb-4 animate-pulse">
+                              <Clock size={24} />
+                            </div>
+                            <h3 className="font-bold text-slate-800 dark:text-white mb-2">في انتظار القبول...</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">لقد تم إرسال دعوة المحادثة إلى {activeChat.firstName} بنجاح.</p>
+                          </>
+                        ) : (
+                          <>
+                            <h3 className="font-bold text-slate-800 dark:text-white mb-2">دعوة محادثة جديدة</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">يريد {activeChat.firstName} التواصل معك.</p>
+                            <button 
+                              onClick={acceptChat}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/30 transition-transform active:scale-95"
+                            >
+                              قبول الدعوة
+                            </button>
+                          </>
+                        )}
+                      </div>
                     ) : (
-                      <User className="w-full h-full p-2 text-slate-500" />
+                      <>
+                        {messages.map(msg => {
+                          const isMe = msg.senderId === userData.uid;
+                          return (
+                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700 rounded-tl-none shadow-sm'}`}>
+                                {msg.imageUrl && (
+                                  <a href={msg.imageUrl} target="_blank" rel="noreferrer">
+                                    <img src={msg.imageUrl} alt="Attachment" className="rounded-xl mb-2 max-w-full h-auto cursor-pointer" />
+                                  </a>
+                                )}
+                                {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
+                                <div className={`text-[9px] mt-1 flex items-center gap-1 ${isMe ? 'text-indigo-200 justify-end' : 'text-slate-400 justify-start'}`}>
+                                  {msg.createdAt?.toDate().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}
+                                  {isMe && <CheckCheck size={10} />}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div ref={messagesEndRef} />
+                      </>
                     )}
                   </div>
                   
-                  <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1">
-                      {msg.senderName}
-                    </span>
-                    <div className={`px-4 py-2.5 rounded-2xl relative group ${
-                      isMine 
-                        ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                        : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white rounded-tl-sm border border-slate-100 dark:border-slate-600'
-                    }`}>
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                      
-                      <div className={`flex items-center gap-2 mt-1 ${isMine ? 'text-indigo-200 justify-end' : 'text-slate-400 justify-start'}`}>
-                        <span className="text-[10px] flex items-center gap-1">
-                          <Clock size={10} /> {timeString}
-                        </span>
-                        
-                        {isAdmin && (
-                          <button 
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-500"
-                            title="حذف الرسالة"
-                          >
-                            <Trash2 size={12} />
+                  {chatSession?.status === 'accepted' && (
+                    <div className="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                      {isUploading && (
+                        <div className="mb-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-indigo-500 h-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                      )}
+                      <form onSubmit={sendMessage} className="flex items-end gap-2">
+                        <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-end p-1 transition-colors focus-within:border-indigo-500 dark:focus-within:border-indigo-500">
+                          <button type="button" className="p-2 text-slate-400 hover:text-amber-500 transition-colors">
+                            <Smile size={20} />
                           </button>
-                        )}
-                      </div>
+                          <textarea 
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                            placeholder="اكتب رسالتك هنا..."
+                            className="flex-1 bg-transparent border-none text-sm p-2 outline-none resize-none min-h-[40px] max-h-[100px] text-slate-800 dark:text-white"
+                            rows={1}
+                          />
+                          <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+                          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:text-indigo-500 transition-colors" title="إرفاق صورة">
+                            <ImageIcon size={20} />
+                          </button>
+                        </div>
+                        <button 
+                          type="submit" 
+                          disabled={!newMessage.trim() || isUploading}
+                          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md transition-transform active:scale-95"
+                        >
+                          <Send size={18} className="rtl:rotate-180" />
+                        </button>
+                      </form>
                     </div>
-                  </div>
+                  )}
                 </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input Area */}
-        <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shrink-0">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="اكتب رسالتك هنا..."
-              className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-            />
-            <button
-              type="submit"
-              disabled={!newMessage.trim()}
-              className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[50px]"
-            >
-              <Send size={20} className="rtl:-scale-x-100" />
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  )}
-</>
-);
-}
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};

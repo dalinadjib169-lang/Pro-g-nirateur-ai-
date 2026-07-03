@@ -7,7 +7,7 @@ export interface TeacherInfo {
   subject: string;
 }
 
-export type GenerationType = 'memo' | 'test' | 'series' | 'summary' | 'visual' | 'cutout_start' | 'cutout_learning' | 'cutout_integration';
+export type GenerationType = 'memo' | 'test' | 'series' | 'summary' | 'cutout_start' | 'cutout_learning' | 'cutout_integration';
 
 export interface Exercise {
   id: string;

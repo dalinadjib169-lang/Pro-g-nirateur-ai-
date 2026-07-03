@@ -4,18 +4,18 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA1Q_FOaIEaQdSDdxX_ov1b4ny_0O39HzU",
-  authDomain: "universal-gearbox-45xj8.firebaseapp.com",
-  projectId: "universal-gearbox-45xj8",
-  storageBucket: "universal-gearbox-45xj8.firebasestorage.app",
-  messagingSenderId: "532000019410",
-  appId: "1:532000019410:web:92f2f40ee0f11ab0af6e0b"
+  apiKey: "AIzaSyAkqsGPlm3rbVXzhbqas7qxDDk060Y3cc4",
+  authDomain: "gen-lang-client-0694864679.firebaseapp.com",
+  projectId: "gen-lang-client-0694864679",
+  storageBucket: "gen-lang-client-0694864679.firebasestorage.app",
+  messagingSenderId: "233520604904",
+  appId: "1:233520604904:web:eec44d74b8d9b147094b5d"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, "ai-studio-gnrateurpro-efc0cc4b-fcc7-4182-b47c-cf6c999d1213");
+const db = getFirestore(app);
 
-export const maxDuration = 60;
+export const maxDuration = 60; // Set max duration to 60 seconds (Vercel Hobby limit)
 
 const getApiKeys = async () => {
   const keys: string[] = [];
@@ -41,21 +41,6 @@ const getApiKeys = async () => {
   }
   
   return [...new Set(keys)];
-};
-
-const markKeySuccess = async (key: string) => {
-  try {
-    const { updateDoc, increment } = await import('firebase/firestore');
-    const q = query(collection(db, 'api_keys'), where('key', '==', key));
-    const snapshot = await getDocs(q);
-    
-    const promises = snapshot.docs.map(docSnap => updateDoc(docSnap.ref, {
-        useCount: increment(1)
-    }));
-    await Promise.all(promises);
-  } catch(e) {
-    console.error('Failed to update key use count', e);
-  }
 };
 
 const markKeyError = async (key: string, errorMsg: string) => {
@@ -115,12 +100,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     تعليمات هامة جداً (يجب الالتزام بها حرفياً):
     1. لا تستخدم أكواد LaTeX للمعادلات الرياضية أبدأ (مثل رموز $ أو \\lim). استخدم دائماً نصوص عادية Unicode ورموز HTML كـ <sup> و <sub> و كسور CSS أو الجداول لعرض الرياضيات بشكل جميل.
-    2. هام جداً: في مادة الرياضيات (وخصوصاً للجيل الثاني)، استخدم دائماً الحروف اللاتينية/الفرنسية (مثل x, y, a, b) للمتغيرات والمجاهيل الرياضية بدلاً من الحروف العربية (س، ع، ص).
-    3. لا تقم بإنشاء إطار (border) حول الصفحة بالكامل، نظامنا سيقوم بإضافة الإطار المناسب بناءً على اختيار المستخدم. ركز فقط على تنسيق المحتوى الداخلي والعناوين.
-    4. استخدم كلاس "avoid-break" (class="avoid-break") لأي بطاقة صغيرة (div)، تمرين قصير، أو أي جزء مترابط لا تريد أن ينقسم بين صفحتين عند الطباعة. لا تستخدم هذا الكلاس مع الأقسام الطويلة جداً لكي لا تترك مساحات بيضاء كبيرة.
-    5. لا تضف أي هوامش جانبية ضخمة (margins/padding) للحاويات الرئيسية، اجعل العرض 100% لتستغل عرض الورقة.
-    6. ممنوع قطعياً استخدام وسم <style>. جميع التنسيقات يجب أن تكون inline CSS (أي style="...").
-    7. ممنوع استخدام خصائص position: fixed أو position: absolute إلا في العلامة المائية فقط لتجنب تخريب واجهة التطبيق.
+    2. لا تقم بإنشاء إطار (border) حول الصفحة بالكامل، نظامنا سيقوم بإضافة الإطار المناسب بناءً على اختيار المستخدم. ركز فقط على تنسيق المحتوى الداخلي والعناوين.
+    3. استخدم كلاس "avoid-break" (class="avoid-break") لأي بطاقة صغيرة (div)، تمرين قصير، أو أي جزء مترابط لا تريد أن ينقسم بين صفحتين عند الطباعة. لا تستخدم هذا الكلاس مع الأقسام الطويلة جداً لكي لا تترك مساحات بيضاء كبيرة.
+    4. لا تضف أي هوامش جانبية ضخمة (margins/padding) للحاويات الرئيسية، اجعل العرض 100% لتستغل عرض الورقة.
+    5. ممنوع قطعياً استخدام وسم <style>. جميع التنسيقات يجب أن تكون inline CSS (أي style="...").
+    6. ممنوع استخدام خصائص position: fixed أو position: absolute إلا في العلامة المائية فقط لتجنب تخريب واجهة التطبيق.
     
     تعليمات التصميم والهيكلة:
     1. ستايل التصميم (Design Style): المستخدم اختار "${designStyle}". طبق هذا النمط من خلال الألوان المتدرجة، أشكال العناوين، الزوايا المنحنية، والخطوط للفقرات والبطاقات الداخلية. 
@@ -131,7 +115,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     3. الترويسة (Header) أفقية بالكامل توزع معلومات الدولة، المؤسسة، الأستاذ، والمادة.
     4. **الجداول**: الجداول يجب أن تكون بعرض 100%. لون صف العناوين بـ var(--doc-color).
     5. **الأشكال والرسومات**: أضف أشكال (SVG) تناسب المادة (رياضيات: هندسة، علوم: نباتات/خلايا، إلخ).
-       - في حال اختيار "وثيقة تفاعلية مدعومة بالصور المدمجة"، استخدم SVG characters مدمجة كرسومات توضيحية لطلاب يطرحون أسئلة أو يفكرون، واجعل المظهر تفاعلياً بشكل كرتوني محبب ومزخرف (كالصور المرفقة بالطبيعة أو الألوان الزاهية).
     6. **العلامة المائية (Watermark)**: ${includeWatermark ? 'المستخدم طلب علامة مائية. أضف عنصر <div> كأول عنصر في body. أعطه الكلاس `watermark-bg` فقط بدون أي inline styles. وضع بداخله رسمة SVG تناسب المادة.' : 'المستخدم لم يطلب علامة مائية. لا تضف أي علامة مائية.'}
     7. اللغة: التزم بلغة الوثيقة ${documentLanguage} مع ضبط اتجاه النص (RTL للعربية، LTR للغات الأجنبية).`;
     
@@ -140,7 +123,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     else if (generationType === 'test') typeLabel = 'اختبار / فرض';
     else if (generationType === 'series') typeLabel = 'سلسلة تمارين';
     else if (generationType === 'summary') typeLabel = 'ملخص';
-    else if (generationType === 'visual') typeLabel = 'وثيقة تفاعلية مدعومة بالصور المدمجة والشخصيات الكرتونية التوضيحية';
     else if (generationType === 'cutout_start') typeLabel = 'قصاصات لـ 8 وضعيات انطلاقية (قابلة للقص والطباعة للطلاب)';
     else if (generationType === 'cutout_learning') typeLabel = 'قصاصات لـ 8 وضعيات تعلمية (قابلة للقص والطباعة)';
     else if (generationType === 'cutout_integration') typeLabel = 'قصاصات لـ 8 وضعيات إدماجية / تقويمية (تتضمن قسمين بكل قصاصة)';
@@ -172,12 +154,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     أخرج كود HTML مرتب، مع استخدام flexbox للترويسة والجداول. 
     اجعل التصميم يشبه النماذج الاحترافية جداً، مزخرف على الجوانب بإطارات ورسومات، ووفر المساحة (استغل كامل عرض الورقة). لا تترك هوامش فارغة ضخمة.
-    - **ملاحظة للمواد العلمية والرياضيات**: يمكنك استخدام صيغة LaTeX لكتابة المعادلات الرياضية بدقة (سيتم تصييرها باستخدام MathJax). استخدم \`$$ معادلة $$\` للمعادلات المنفصلة، و \`\\( معادلة \\)\` للمعادلات داخل السطر.
-    ${generationType === 'visual' ? `
-    - **هام جدًا للمذكرة التفاعلية**: يجب أن تُصمم الصفحة كأنها قصة أو مجلة أطفال تعليمية تفاعلية، استخدم الكثير من الشخصيات الكرتونية بصيغة SVG (طلاب، معلم، حيوانات، أو أشكال معبرة) إلى جانب الفقرات.
-    - اجعل الإطارات والبطاقات تحتوي على زوايا دائرية، ظلال ناعمة، وألوان مبهجة حسب الستايل المختار.
-    - استخدم تصميمات مبتكرة بدلاً من الجداول التقليدية (مثل بطاقات حوارية "قال ريان..." "قالت سلمى...").
-    ` : ''}
     هام جداً لتقليل عدد الأوراق عند الطباعة:
     - قلل الفراغات العمودية (margin, padding) بين العناصر والفقرات والجداول.
     - استغل المساحة الأفقية جيداً (يمكن استخدام شبكة grid أو flex لترتيب البطاقات جنباً إلى جنب).
@@ -207,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         });
 
-        const responseStream = await ai.models.generateContentStream({
+        response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
           contents: userPrompt,
           config: {
@@ -215,21 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             temperature: 0.7,
           },
         });
-
-        // Set headers for streaming response
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Transfer-Encoding', 'chunked');
-        res.setHeader('Cache-Control', 'no-cache, no-transform');
-        
-        for await (const chunk of responseStream) {
-            if (chunk.text) {
-                res.write(chunk.text);
-            }
-        }
-        res.end();
-        // Fire and forget updating the key usage
-        markKeySuccess(apiKey).catch(console.error);
-        return;
+        break; 
       } catch (error: any) {
         lastError = error;
         attempts++;
@@ -262,14 +224,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const errString = typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError);
-    const errMsg = lastError?.message || errString;
-    const isRateLimit = lastError?.status === 429 || lastError?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
-    
-    if (isRateLimit) {
-        throw new Error("RATE_LIMIT");
+    if (!response) {
+      const errString = typeof lastError === 'object' ? JSON.stringify(lastError) : String(lastError);
+      const errMsg = lastError?.message || errString;
+      const isRateLimit = lastError?.status === 429 || lastError?.code === 429 || errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
+      
+      if (isRateLimit) {
+         throw new Error("RATE_LIMIT");
+      }
+      throw lastError || new Error("Failed to generate content");
     }
-    throw lastError || new Error("Failed to generate content");
+
+    let htmlContent = response.text || "";
+    htmlContent = htmlContent.replace(/```html/gi, '').replace(/```/g, '');
+    htmlContent = htmlContent.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
+    htmlContent = htmlContent.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    htmlContent = htmlContent.replace(/position\s*:\s*fixed/gi, 'position: absolute');
+    htmlContent = htmlContent.replace(/100vw/gi, '100%').replace(/100vh/gi, '100%');
+
+    res.status(200).json({ content: htmlContent });
   } catch (error: any) {
     const errString = typeof error === 'object' ? JSON.stringify(error) : String(error);
     const errMsg = error?.message || errString;
