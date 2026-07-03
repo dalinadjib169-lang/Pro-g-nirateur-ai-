@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Search, Send, Image as ImageIcon, User, Sparkles, MapPin, GraduationCap, BookOpen, Clock, Settings, ImagePlus } from 'lucide-react';
+import { MessageCircle, X, Search, Send, Image as ImageIcon, User, Sparkles, MapPin, GraduationCap, BookOpen, Clock, Settings, ImagePlus, UserPlus, Check, UserMinus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, onSnapshot, addDoc, serverTimestamp, doc, orderBy, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, serverTimestamp, doc, orderBy, setDoc, getDoc, updateDoc, where } from 'firebase/firestore';
 import { profileModalEmitter, expertChatEmitter } from '../App';
 import { uploadImage } from '../lib/cloudinary';
 
@@ -28,10 +28,19 @@ interface Message {
   createdAt: any;
 }
 
+interface ChatSession {
+  id: string;
+  user1Id: string;
+  user2Id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  initiatorId: string;
+}
+
 export const TeachersRoom: React.FC = () => {
   const { userData } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [activeChat, setActiveChat] = useState<Teacher | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -40,6 +49,7 @@ export const TeachersRoom: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roomBanner, setRoomBanner] = useState<string | null>(null);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const constraintsRef = useRef(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,12 +86,13 @@ export const TeachersRoom: React.FC = () => {
     }
   };
 
-  // Fetch teachers list
+  // Fetch teachers list and chat sessions
   useEffect(() => {
     if (!isOpen || !userData) return;
 
-    const q = query(collection(db, 'users'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    // Fetch Users
+    const qUsers = query(collection(db, 'users'));
+    const unsubUsers = onSnapshot(qUsers, (querySnapshot) => {
       const fetchedTeachers: Teacher[] = [];
       querySnapshot.forEach((docSnap) => {
         if (docSnap.id !== userData.uid) {
@@ -107,7 +118,22 @@ export const TeachersRoom: React.FC = () => {
       setTeachers(fetchedTeachers);
     });
 
-    return () => unsubscribe();
+    // Fetch Sessions (both where user is user1 or user2)
+    // Firestore OR queries are possible but we can just subscribe to all sessions involving user
+    const qSessions1 = query(collection(db, 'chat_sessions'), where('user1Id', '==', userData.uid));
+    const unsubSessions1 = onSnapshot(qSessions1, handleSessionsSnapshot);
+    const qSessions2 = query(collection(db, 'chat_sessions'), where('user2Id', '==', userData.uid));
+    const unsubSessions2 = onSnapshot(qSessions2, handleSessionsSnapshot);
+
+    const activeSessions: Record<string, ChatSession> = {};
+    function handleSessionsSnapshot(snapshot: any) {
+      snapshot.forEach((docSnap: any) => {
+        activeSessions[docSnap.id] = { id: docSnap.id, ...docSnap.data() } as ChatSession;
+      });
+      setChatSessions(Object.values(activeSessions));
+    }
+
+    return () => { unsubUsers(); unsubSessions1(); unsubSessions2(); };
   }, [isOpen, userData]);
 
   // Fetch messages for active chat
@@ -118,7 +144,7 @@ export const TeachersRoom: React.FC = () => {
     }
 
     const chatId = getChatId(userData.uid, activeChat.uid);
-    const messagesRef = collection(db, 'direct_messages', chatId, 'messages');
+    const messagesRef = collection(db, 'chat_sessions', chatId, 'messages');
     const qMsg = query(messagesRef, orderBy('createdAt', 'asc'));
     
     const unsubMessages = onSnapshot(qMsg, (snapshot) => {
@@ -131,6 +157,38 @@ export const TeachersRoom: React.FC = () => {
     return () => unsubMessages();
   }, [activeChat, userData]);
 
+  const sendFriendRequest = async (teacherUid: string) => {
+    if (!userData) return;
+    const chatId = getChatId(userData.uid, teacherUid);
+    await setDoc(doc(db, 'chat_sessions', chatId), {
+      user1Id: userData.uid,
+      user2Id: teacherUid,
+      status: 'pending',
+      initiatorId: userData.uid,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const acceptFriendRequest = async (chatId: string) => {
+    await updateDoc(doc(db, 'chat_sessions', chatId), {
+      status: 'accepted',
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const rejectFriendRequest = async (chatId: string) => {
+    await updateDoc(doc(db, 'chat_sessions', chatId), {
+      status: 'rejected',
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const getSessionForTeacher = (teacherUid: string) => {
+    if (!userData) return null;
+    const chatId = getChatId(userData.uid, teacherUid);
+    return chatSessions.find(s => s.id === chatId);
+  };
+
   const sendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newMessage.trim() || !activeChat || !userData) return;
@@ -139,7 +197,7 @@ export const TeachersRoom: React.FC = () => {
     setNewMessage('');
     
     const chatId = getChatId(userData.uid, activeChat.uid);
-    await addDoc(collection(db, 'direct_messages', chatId, 'messages'), {
+    await addDoc(collection(db, 'chat_sessions', chatId, 'messages'), {
       senderId: userData.uid,
       text: msgText,
       createdAt: serverTimestamp()
@@ -148,7 +206,7 @@ export const TeachersRoom: React.FC = () => {
     // Auto-reply from developer
     if (activeChat.email === 'dalinadjib1990@gmail.com') {
       setTimeout(async () => {
-        await addDoc(collection(db, 'direct_messages', chatId, 'messages'), {
+        await addDoc(collection(db, 'chat_sessions', chatId, 'messages'), {
           senderId: activeChat.uid,
           text: 'سوف يتواصل معك الأستاذ المطور dali nadjib رقم الهاتف 0771167330 و ذلك لإرسال كود تفعيل الوضع الاحترافي',
           createdAt: serverTimestamp()
@@ -166,7 +224,7 @@ export const TeachersRoom: React.FC = () => {
     try {
       const url = await uploadImage(file, setUploadProgress);
       const chatId = getChatId(userData.uid, activeChat.uid);
-      await addDoc(collection(db, 'direct_messages', chatId, 'messages'), {
+      await addDoc(collection(db, 'chat_sessions', chatId, 'messages'), {
         senderId: userData.uid,
         text: '',
         imageUrl: url,
@@ -188,10 +246,12 @@ export const TeachersRoom: React.FC = () => {
 
   return (
     <>
+      <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[90]" />
+      
       <motion.div
         drag
-        dragMomentum={false}
-        className="fixed bottom-6 left-6 z-[100] cursor-grab active:cursor-grabbing"
+        dragConstraints={constraintsRef}
+        className="fixed bottom-6 left-6 z-[100] cursor-grab active:cursor-grabbing pointer-events-auto"
       >
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-500 via-cyan-500 to-amber-500 rounded-full blur opacity-70 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
@@ -302,31 +362,86 @@ export const TeachersRoom: React.FC = () => {
                   <h4 className="text-xs font-bold text-slate-500 mb-3 px-1">الأساتذة المتاحين</h4>
                   
                   <div className="space-y-2">
-                    {filteredTeachers.map(teacher => (
-                      <button 
-                        key={teacher.uid}
-                        onClick={() => setActiveChat(teacher)}
-                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 hover:bg-indigo-50 rounded-xl border border-slate-100 dark:border-slate-700 transition-all text-right relative"
-                      >
-                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 flex-shrink-0">
-                          {teacher.profilePic ? (
-                            <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-400"><User size={20} /></div>
-                          )}
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                          <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate">
-                            {teacher.firstName} {teacher.lastName}
-                            {teacher.email === 'dalinadjib1990@gmail.com' && <span className="text-amber-500 mr-1" title="المطور">⭐</span>}
-                          </h5>
-                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
-                            {(teacher.state || teacher.wilaya) && <span className="bg-slate-100 px-1.5 rounded">{teacher.state || teacher.wilaya}</span>}
-                            {teacher.phase && <span className="bg-slate-100 px-1.5 rounded">{teacher.phase}</span>}
+                    {filteredTeachers.map(teacher => {
+                      const session = getSessionForTeacher(teacher.uid);
+                      const isDeveloper = teacher.email === 'dalinadjib1990@gmail.com';
+                      
+                      return (
+                        <div 
+                          key={teacher.uid}
+                          className="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 transition-all"
+                        >
+                          <div className="flex items-center gap-3 overflow-hidden flex-1 cursor-pointer" onClick={() => {
+                            if (session?.status === 'accepted' || isDeveloper) {
+                              setActiveChat(teacher);
+                            }
+                          }}>
+                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 flex-shrink-0">
+                              {teacher.profilePic ? (
+                                <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-400"><User size={20} /></div>
+                              )}
+                            </div>
+                            <div className="flex-1 overflow-hidden text-right">
+                              <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate">
+                                {teacher.firstName} {teacher.lastName}
+                                {isDeveloper && <span className="text-amber-500 mr-1" title="المطور">⭐</span>}
+                              </h5>
+                              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                                {(teacher.state || teacher.wilaya) && <span className="bg-slate-100 px-1.5 rounded">{teacher.state || teacher.wilaya}</span>}
+                                {teacher.phase && <span className="bg-slate-100 px-1.5 rounded">{teacher.phase}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Connection Actions */}
+                          <div className="flex-shrink-0 flex items-center gap-2 pr-2 border-r border-slate-100 dark:border-slate-700">
+                            {isDeveloper ? (
+                               <button 
+                                onClick={() => setActiveChat(teacher)}
+                                className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center hover:bg-indigo-200 transition-colors"
+                              >
+                                <MessageCircle size={16} />
+                              </button>
+                            ) : !session ? (
+                              <button 
+                                onClick={() => sendFriendRequest(teacher.uid)}
+                                className="text-[10px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center gap-1"
+                              >
+                                <UserPlus size={14} /> إضافة
+                              </button>
+                            ) : session.status === 'pending' ? (
+                              session.initiatorId === userData.uid ? (
+                                <span className="text-[10px] bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg font-medium">
+                                  قيد الانتظار
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => acceptFriendRequest(session.id)} className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200">
+                                    <Check size={14} />
+                                  </button>
+                                  <button onClick={() => rejectFriendRequest(session.id)} className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center hover:bg-red-200">
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              )
+                            ) : session.status === 'accepted' ? (
+                              <button 
+                                onClick={() => setActiveChat(teacher)}
+                                className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center hover:bg-indigo-200 transition-colors"
+                              >
+                                <MessageCircle size={16} />
+                              </button>
+                            ) : (
+                              <span className="text-[10px] bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg font-medium">
+                                مرفوض
+                              </span>
+                            )}
                           </div>
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                     {filteredTeachers.length === 0 && (
                       <div className="text-center py-10 text-slate-500 text-sm">لا يوجد أساتذة متاحين.</div>
                     )}
@@ -370,6 +485,11 @@ export const TeachersRoom: React.FC = () => {
                         </div>
                       );
                     })}
+                    {messages.length === 0 && (
+                       <div className="text-center py-10 text-slate-400 text-sm">
+                         بداية المحادثة مع الأستاذ {activeChat.firstName}
+                       </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                   
