@@ -10,7 +10,7 @@ import { uploadImage } from '../lib/cloudinary';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { userData } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'keys' | 'codes' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'keys' | 'settings'>('users');
   
   // Settings state
   const [profilePic, setProfilePic] = useState(userData?.profilePic || '');
@@ -19,9 +19,6 @@ export default function AdminDashboard() {
   const [email, setEmail] = useState(userData?.email || '');
   const [newPassword, setNewPassword] = useState('');
   
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const [codes, setCodes] = useState<any[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
   const [keys, setKeys] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,29 +55,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchCodes = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'activation_codes'));
-      const codesData: any[] = [];
-      querySnapshot.forEach((doc) => {
-        codesData.push({ id: doc.id, ...doc.data() });
-      });
-      // Sort by createdAt descending
-      codesData.sort((a, b) => {
-        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return dateB - dateA;
-      });
-      setCodes(codesData);
-    } catch (error) {
-      console.error('Error fetching codes:', error);
-    }
-  };
-
   useEffect(() => {
     fetchUsers();
     fetchKeys();
-    fetchCodes();
   }, []);
 
   useEffect(() => {
@@ -146,47 +123,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleGenerateCode = async () => {
-    const inputCode = window.prompt('أدخل كود التفعيل المخصص (أو اتركه فارغاً لتوليد كود عشوائي):');
-    if (inputCode === null) return; // User cancelled the prompt
-
-    try {
-      const code = inputCode.trim() !== '' 
-        ? inputCode.replace(/\s+/g, '').toUpperCase() 
-        : Math.random().toString(36).substring(2, 14).toUpperCase();
-      
-      await addDoc(collection(db, 'activation_codes'), {
-        code,
-        generations: 250,
-        isUsed: false,
-        usedBy: null,
-        createdAt: serverTimestamp()
-      });
-      fetchCodes();
-    } catch (error) {
-      console.error('Error generating code:', error);
-      alert('خطأ في توليد الكود.');
-    }
-  };
-
-  const handleDeleteCode = async (id: string) => {
-    if(window.confirm('هل أنت متأكد من حذف هذا الكود؟')) {
-      try {
-        await deleteDoc(doc(db, 'activation_codes', id));
-        fetchCodes();
-      } catch (error) {
-        console.error('Error deleting code:', error);
-      }
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCode(text);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
-
-  // User Handlers
   const handleUpdateGenerations = async (uid: string, newAmount: number) => {
     try {
       await updateDoc(doc(db, 'users', uid), {
@@ -198,60 +134,29 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleActivateUserWithCode = async (uid: string, codeStr: string) => {
-    const code = codeStr.replace(/\s+/g, '').toUpperCase();
-    if(!code) return;
-    
+  const handleActivateUser = async (uid: string) => {
     try {
-      const q = query(collection(db, 'activation_codes'), where('code', '==', code));
-      const querySnapshot = await getDocs(q);
-      
-      if(querySnapshot.empty) {
-        alert('الكود غير صالح.');
-        return;
-      }
-      
-      const codeDoc = querySnapshot.docs[0];
-      const codeData = codeDoc.data() as any;
-      if(codeData.isUsed) {
-        alert('تم استخدام هذا الكود من قبل.');
-        return;
-      }
-      
-      const generationsToAdd = codeData.generations || 250;
-      
-      // Mark code as used
-      await updateDoc(doc(db, 'activation_codes', codeDoc.id), {
-        isUsed: true,
-        usedBy: uid,
-        usedAt: new Date()
-      });
-      
-      // Add generations to user and set isActive to true
       await updateDoc(doc(db, 'users', uid), {
-        generationsRemaining: increment(generationsToAdd),
         isActive: true,
         isPro: true
       });
-      
-      alert(`تم تفعيل حساب المستخدم بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
       fetchUsers();
-      fetchCodes();
-      
-    } catch (error: any) {
-      console.error('Error redeeming code:', error);
-      alert('حدث خطأ أثناء تفعيل الكود.');
+    } catch (error) {
+      console.error('Error activating user:', error);
+      alert('حدث خطأ أثناء تفعيل المستخدم.');
     }
   };
 
-  const handleToggleUserStatus = async (uid: string, currentStatus: boolean) => {
+  const handleDeactivateUser = async (uid: string) => {
     try {
       await updateDoc(doc(db, 'users', uid), {
-        isActive: !currentStatus
+        isActive: false,
+        isPro: false
       });
       fetchUsers();
     } catch (error) {
-      console.error('Error toggling status:', error);
+      console.error('Error deactivating user:', error);
+      alert('حدث خطأ أثناء إيقاف المستخدم.');
     }
   };
 
@@ -343,14 +248,6 @@ export default function AdminDashboard() {
           </button>
 
           <button 
-            onClick={() => setActiveTab('codes')} 
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'codes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <KeyRound size={20} />
-            <span className="font-medium">أكواد التفعيل</span>
-          </button>
-          
-          <button 
             onClick={() => setActiveTab('settings')} 
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
@@ -403,7 +300,6 @@ export default function AdminDashboard() {
                         <th className="px-6 py-4 font-semibold">الرصيد المتبقي</th>
                         <th className="px-6 py-4 font-semibold">إجمالي التوليد</th>
                         <th className="px-6 py-4 font-semibold">الحالة</th>
-                        <th className="px-6 py-4 font-semibold text-center">تفعيل بالكود</th>
                         <th className="px-6 py-4 font-semibold text-center">إجراءات</th>
                       </tr>
                     </thead>
@@ -429,33 +325,22 @@ export default function AdminDashboard() {
                               {user.isActive ? 'نشط' : 'موقوف'}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-1 justify-center">
-                              <input 
-                                id={`activation-code-${user.uid}`} 
-                                type="text" 
-                                placeholder="الكود..." 
-                                className="w-24 px-2 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" 
-                                dir="ltr" 
-                              />
+                          <td className="px-6 py-4 flex justify-center gap-2">
+                            {!user.isActive ? (
                               <button 
-                                onClick={() => {
-                                  const input = document.getElementById(`activation-code-${user.uid}`) as HTMLInputElement;
-                                  if(input && input.value) {
-                                    handleActivateUserWithCode(user.uid!, input.value);
-                                    input.value = '';
-                                  }
-                                }} 
-                                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                onClick={() => handleActivateUser(user.uid!)} 
+                                className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors"
                               >
                                 تفعيل
                               </button>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 flex justify-center gap-2">
-                            <button onClick={() => handleToggleUserStatus(user.uid!, user.isActive)} className="p-2 text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-amber-50 rounded-lg transition-colors" title="إيقاف/تفعيل">
-                              <Power size={18} />
-                            </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleDeactivateUser(user.uid!)} 
+                                className="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-colors"
+                              >
+                                تعطيل
+                              </button>
+                            )}
                             <button onClick={() => handleDeleteUser(user.uid!)} className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-lg transition-colors" title="حذف">
                               <Trash2 size={18} />
                             </button>
@@ -464,7 +349,7 @@ export default function AdminDashboard() {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                             {fetchError ? (
                               <span className="text-red-500 font-semibold">{fetchError}</span>
                             ) : (
@@ -533,89 +418,6 @@ export default function AdminDashboard() {
                       {keys.length === 0 && (
                         <tr>
                           <td colSpan={5} className="px-6 py-12 text-center text-slate-500">لا توجد مفاتيح مضافة.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'codes' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-800 mb-2">أكواد التفعيل</h2>
-                  <p className="text-slate-500">قم بتوليد وإدارة أكواد تفعيل الحسابات (كل كود يمنح 250 توليدة).</p>
-                </div>
-                <button 
-                  onClick={handleGenerateCode} 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-transform active:scale-95"
-                >
-                  <Plus size={20} />
-                  إنشاء كود جديد
-                </button>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right">
-                    <thead className="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
-                      <tr>
-                        <th className="px-6 py-4 font-semibold">الكود (المفتاح)</th>
-                        <th className="px-6 py-4 font-semibold">تاريخ التوليد</th>
-                        <th className="px-6 py-4 font-semibold">مستعمل بواسطة</th>
-                        <th className="px-6 py-4 font-semibold">الحالة</th>
-                        <th className="px-6 py-4 font-semibold text-center">إجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {codes.map(code => (
-                        <tr key={code.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono font-bold text-lg text-slate-800 tracking-wider bg-slate-100 px-3 py-1 rounded-lg" dir="ltr">
-                                {code.code}
-                              </span>
-                              <button 
-                                onClick={() => copyToClipboard(code.code)}
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                title="نسخ الكود"
-                              >
-                                {copiedCode === code.code ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Copy size={18} />}
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500">
-                            {code.createdAt?.toDate ? code.createdAt.toDate().toLocaleDateString('ar-DZ') : ''}
-                          </td>
-                          <td className="px-6 py-4 text-slate-500">{code.usedBy || '-'}</td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${code.isUsed ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-700'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${code.isUsed ? 'bg-slate-400' : 'bg-emerald-500'}`}></span>
-                              {code.isUsed ? 'مستعمل' : 'متاح للاستخدام'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 flex justify-center">
-                            <button 
-                              onClick={() => handleDeleteCode(code.id)} 
-                              className="p-2 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-lg transition-colors" 
-                              title="حذف الكود"
-                            >
-                              <Trash2 size={20} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {codes.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                            <div className="flex flex-col items-center justify-center gap-3">
-                              <KeyRound size={48} className="text-slate-300" />
-                              <p>لم يتم توليد أي أكواد مفاتيح بعد.</p>
-                            </div>
-                          </td>
                         </tr>
                       )}
                     </tbody>
