@@ -84,6 +84,7 @@ export default function GeneratorPage() {
   
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [generatingDhikr, setGeneratingDhikr] = useState('');
 
@@ -932,17 +933,20 @@ export default function GeneratorPage() {
                     if(!code) return;
                     
                     try {
+                      setIsActivating(true);
                       const q = query(collection(db, 'activation_codes'), where('code', '==', code));
                       const querySnapshot = await getDocs(q);
                       
                       if(querySnapshot.empty) {
                         alert('الكود غير صالح.');
+                        setIsActivating(false);
                         return;
                       }
                       
                       const codeDoc = querySnapshot.docs[0];
                       if(codeDoc.data().isUsed) {
                         alert('تم استخدام هذا الكود من قبل.');
+                        setIsActivating(false);
                         return;
                       }
                       
@@ -964,14 +968,21 @@ export default function GeneratorPage() {
                       alert(`تم شحن رصيدك بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
                       refreshUserData();
                       
-                    } catch (error) {
+                    } catch (error: any) {
                       console.error('Error redeeming code:', error);
-                      alert('حدث خطأ أثناء تفعيل الكود.');
+                      if (error.code === 'permission-denied') {
+                        alert('عذراً، يبدو أن هناك مشكلة في صلاحيات قاعدة البيانات. يرجى التواصل مع الدعم.');
+                      } else {
+                        alert('حدث خطأ أثناء تفعيل الكود. تأكد من اتصالك بالإنترنت.');
+                      }
+                    } finally {
+                      setIsActivating(false);
                     }
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors"
+                  disabled={isActivating}
+                  className={`text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors ${isActivating ? 'bg-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                 >
-                  تفعيل
+                  {isActivating ? 'جاري التفعيل...' : 'تفعيل'}
                 </button>
               </div>
             </div>
