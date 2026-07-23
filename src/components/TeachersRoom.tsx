@@ -116,6 +116,8 @@ export const TeachersRoom: React.FC = () => {
       }
 
       setTeachers(fetchedTeachers);
+    }, (error) => {
+      console.error('Error fetching users in TeachersRoom:', error);
     });
 
     // Fetch Sessions (both where user is user1 or user2)

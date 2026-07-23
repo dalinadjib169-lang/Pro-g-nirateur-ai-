@@ -84,7 +84,7 @@ export default function GeneratorPage() {
   
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isActivating, setIsActivating] = useState(false);
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const [generatingDhikr, setGeneratingDhikr] = useState('');
 

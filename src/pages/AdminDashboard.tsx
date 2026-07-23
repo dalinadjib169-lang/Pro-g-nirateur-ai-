@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../lib/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, where, increment } from 'firebase/firestore';
 import { useAuth, UserData } from '../contexts/AuthContext';
 import { Settings, BarChart3, Trash2, Edit, Plus, RefreshCw, Home, User, Lock, KeyRound, Copy, CheckCircle2, Users, Key, Power, Search, ImageMinus } from 'lucide-react';
 import { updatePassword, updateEmail } from 'firebase/auth';
@@ -34,8 +34,11 @@ export default function AdminDashboard() {
         usersData.push({ uid: doc.id, ...doc.data() } as UserData);
       });
       setUsers(usersData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
+      if (error.code === 'permission-denied') {
+        alert('صلاحيات غير كافية لجلب المستخدمين. يرجى تعديل قواعد بيانات Firestore للسماح بالوصول (read).');
+      }
     }
   };
 
@@ -206,12 +209,13 @@ export default function AdminDashboard() {
       }
       
       const codeDoc = querySnapshot.docs[0];
-      if(codeDoc.data().isUsed) {
+      const codeData = codeDoc.data() as any;
+      if(codeData.isUsed) {
         alert('تم استخدام هذا الكود من قبل.');
         return;
       }
       
-      const generationsToAdd = codeDoc.data().generations || 250;
+      const generationsToAdd = codeData.generations || 250;
       
       // Mark code as used
       await updateDoc(doc(db, 'activation_codes', codeDoc.id), {
@@ -223,7 +227,8 @@ export default function AdminDashboard() {
       // Add generations to user and set isActive to true
       await updateDoc(doc(db, 'users', uid), {
         generationsRemaining: increment(generationsToAdd),
-        isActive: true
+        isActive: true,
+        isPro: true
       });
       
       alert(`تم تفعيل حساب المستخدم بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
@@ -304,8 +309,8 @@ export default function AdminDashboard() {
   };
 
   const filteredUsers = users.filter(u => 
-    `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -456,7 +461,7 @@ export default function AdminDashboard() {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-slate-500">لا يوجد مستخدمين.</td>
+                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500">لا يوجد مستخدمين.</td>
                         </tr>
                       )}
                     </tbody>
