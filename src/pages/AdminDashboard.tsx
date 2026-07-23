@@ -146,7 +146,7 @@ export default function AdminDashboard() {
 
     try {
       const code = inputCode.trim() !== '' 
-        ? inputCode.trim().toUpperCase() 
+        ? inputCode.replace(/\s+/g, '').toUpperCase() 
         : Math.random().toString(36).substring(2, 14).toUpperCase();
       
       await addDoc(collection(db, 'activation_codes'), {

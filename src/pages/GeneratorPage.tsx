@@ -929,7 +929,7 @@ export default function GeneratorPage() {
                   <button 
                     onClick={async () => {
                       const input = document.getElementById('activation-code-input') as HTMLInputElement;
-                      const code = input.value.trim().toUpperCase();
+                      const code = input.value.replace(/\s+/g, '').toUpperCase();
                     if(!code) return;
                     
                     try {
