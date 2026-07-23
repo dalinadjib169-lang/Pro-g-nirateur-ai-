@@ -192,6 +192,50 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleActivateUserWithCode = async (uid: string, codeStr: string) => {
+    const code = codeStr.replace(/\s+/g, '').toUpperCase();
+    if(!code) return;
+    
+    try {
+      const q = query(collection(db, 'activation_codes'), where('code', '==', code));
+      const querySnapshot = await getDocs(q);
+      
+      if(querySnapshot.empty) {
+        alert('الكود غير صالح.');
+        return;
+      }
+      
+      const codeDoc = querySnapshot.docs[0];
+      if(codeDoc.data().isUsed) {
+        alert('تم استخدام هذا الكود من قبل.');
+        return;
+      }
+      
+      const generationsToAdd = codeDoc.data().generations || 250;
+      
+      // Mark code as used
+      await updateDoc(doc(db, 'activation_codes', codeDoc.id), {
+        isUsed: true,
+        usedBy: uid,
+        usedAt: new Date()
+      });
+      
+      // Add generations to user and set isActive to true
+      await updateDoc(doc(db, 'users', uid), {
+        generationsRemaining: increment(generationsToAdd),
+        isActive: true
+      });
+      
+      alert(`تم تفعيل حساب المستخدم بنجاح! تم إضافة ${generationsToAdd} توليدة.`);
+      fetchUsers();
+      fetchCodes();
+      
+    } catch (error: any) {
+      console.error('Error redeeming code:', error);
+      alert('حدث خطأ أثناء تفعيل الكود.');
+    }
+  };
+
   const handleToggleUserStatus = async (uid: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, 'users', uid), {
@@ -351,6 +395,7 @@ export default function AdminDashboard() {
                         <th className="px-6 py-4 font-semibold">الرصيد المتبقي</th>
                         <th className="px-6 py-4 font-semibold">إجمالي التوليد</th>
                         <th className="px-6 py-4 font-semibold">الحالة</th>
+                        <th className="px-6 py-4 font-semibold text-center">تفعيل بالكود</th>
                         <th className="px-6 py-4 font-semibold text-center">إجراءات</th>
                       </tr>
                     </thead>
@@ -358,7 +403,10 @@ export default function AdminDashboard() {
                       {filteredUsers.map(user => (
                         <tr key={user.uid} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 font-medium text-slate-800">{user.firstName} {user.lastName}</td>
-                          <td className="px-6 py-4 text-slate-600" dir="ltr" style={{textAlign: 'right'}}>{user.email}</td>
+                          <td className="px-6 py-4 text-slate-600" dir="ltr" style={{textAlign: 'right'}}>
+                            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${user.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            {user.email}
+                          </td>
                           <td className="px-6 py-4">
                             <input 
                               type="number" 
@@ -372,6 +420,29 @@ export default function AdminDashboard() {
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               {user.isActive ? 'نشط' : 'موقوف'}
                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1 justify-center">
+                              <input 
+                                id={`activation-code-${user.uid}`} 
+                                type="text" 
+                                placeholder="الكود..." 
+                                className="w-24 px-2 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" 
+                                dir="ltr" 
+                              />
+                              <button 
+                                onClick={() => {
+                                  const input = document.getElementById(`activation-code-${user.uid}`) as HTMLInputElement;
+                                  if(input && input.value) {
+                                    handleActivateUserWithCode(user.uid!, input.value);
+                                    input.value = '';
+                                  }
+                                }} 
+                                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                              >
+                                تفعيل
+                              </button>
+                            </div>
                           </td>
                           <td className="px-6 py-4 flex justify-center gap-2">
                             <button onClick={() => handleToggleUserStatus(user.uid!, user.isActive)} className="p-2 text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-amber-50 rounded-lg transition-colors" title="إيقاف/تفعيل">

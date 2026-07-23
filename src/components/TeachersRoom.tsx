@@ -365,6 +365,7 @@ export const TeachersRoom: React.FC = () => {
                     {filteredTeachers.map(teacher => {
                       const session = getSessionForTeacher(teacher.uid);
                       const isDeveloper = teacher.email === 'dalinadjib1990@gmail.com';
+                      const isAdmin = userData?.email === 'dalinadjib1990@gmail.com';
                       
                       return (
                         <div 
@@ -372,16 +373,17 @@ export const TeachersRoom: React.FC = () => {
                           className="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 transition-all"
                         >
                           <div className="flex items-center gap-3 overflow-hidden flex-1 cursor-pointer" onClick={() => {
-                            if (session?.status === 'accepted' || isDeveloper) {
+                            if (session?.status === 'accepted' || isDeveloper || isAdmin) {
                               setActiveChat(teacher);
                             }
                           }}>
-                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 flex-shrink-0">
+                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 flex-shrink-0 relative">
                               {teacher.profilePic ? (
                                 <img src={teacher.profilePic} alt={teacher.firstName} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-400"><User size={20} /></div>
                               )}
+                              {teacher.isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>}
                             </div>
                             <div className="flex-1 overflow-hidden text-right">
                               <h5 className="font-bold text-sm text-slate-800 dark:text-white truncate">
@@ -397,7 +399,7 @@ export const TeachersRoom: React.FC = () => {
                           
                           {/* Connection Actions */}
                           <div className="flex-shrink-0 flex items-center gap-2 pr-2 border-r border-slate-100 dark:border-slate-700">
-                            {isDeveloper ? (
+                            {isDeveloper || isAdmin ? (
                                <button 
                                 onClick={() => setActiveChat(teacher)}
                                 className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center hover:bg-indigo-200 transition-colors"
