@@ -25,9 +25,11 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [keys, setKeys] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     try {
+      setFetchError(null);
       const querySnapshot = await getDocs(collection(db, 'users'));
       const usersData: UserData[] = [];
       querySnapshot.forEach((doc) => {
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
       setUsers(usersData);
     } catch (error: any) {
       console.error('Error fetching users:', error);
+      setFetchError(error.message || 'حدث خطأ غير معروف');
       if (error.code === 'permission-denied') {
         alert('صلاحيات غير كافية لجلب المستخدمين. يرجى تعديل قواعد بيانات Firestore للسماح بالوصول (read).');
       }
@@ -461,7 +464,13 @@ export default function AdminDashboard() {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500">لا يوجد مستخدمين.</td>
+                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                            {fetchError ? (
+                              <span className="text-red-500 font-semibold">{fetchError}</span>
+                            ) : (
+                              'لا يوجد مستخدمين.'
+                            )}
+                          </td>
                         </tr>
                       )}
                     </tbody>
