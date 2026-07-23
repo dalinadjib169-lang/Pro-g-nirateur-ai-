@@ -5,7 +5,7 @@ import { soundManager } from '../audio';
 import html2pdf from 'html2pdf.js';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, getDocs, query, where, increment } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useDownloads } from '../contexts/DownloadsContext';
 import DownloadsModal from '../components/DownloadsModal';
@@ -932,19 +932,20 @@ export default function GeneratorPage() {
                     if(!code) return;
                     
                     try {
-                      // Dynamically import firestore to avoid bloat
-                      const { collection, getDocs, query, where, updateDoc, doc, increment } = await import('firebase/firestore');
-                      const { db } = await import('../lib/firebase');
-                      
-                      const q = query(collection(db, 'activation_codes'), where('code', '==', code), where('isUsed', '==', false));
+                      const q = query(collection(db, 'activation_codes'), where('code', '==', code));
                       const querySnapshot = await getDocs(q);
                       
                       if(querySnapshot.empty) {
-                        alert('الكود غير صالح أو تم استخدامه من قبل.');
+                        alert('الكود غير صالح.');
                         return;
                       }
                       
                       const codeDoc = querySnapshot.docs[0];
+                      if(codeDoc.data().isUsed) {
+                        alert('تم استخدام هذا الكود من قبل.');
+                        return;
+                      }
+                      
                       const generationsToAdd = codeDoc.data().generations || 250;
                       
                       // Mark code as used
