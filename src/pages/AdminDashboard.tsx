@@ -141,9 +141,13 @@ export default function AdminDashboard() {
   };
 
   const handleGenerateCode = async () => {
+    const inputCode = window.prompt('أدخل كود التفعيل المخصص (أو اتركه فارغاً لتوليد كود عشوائي):');
+    if (inputCode === null) return; // User cancelled the prompt
+
     try {
-      // Generate random 12-char alphanumeric code
-      const code = Math.random().toString(36).substring(2, 14).toUpperCase();
+      const code = inputCode.trim() !== '' 
+        ? inputCode.trim().toUpperCase() 
+        : Math.random().toString(36).substring(2, 14).toUpperCase();
       
       await addDoc(collection(db, 'activation_codes'), {
         code,
