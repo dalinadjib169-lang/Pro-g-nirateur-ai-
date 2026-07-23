@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData(data);
 
         // Automatically make admins
-        const isAdminUser = data.email?.includes('0771167330') || data.phone?.includes('0771167330') || data.email === 'dalinadjib1990@gmail.com';
+        const isAdminUser = data.email?.includes('0771167330') || data.phone?.includes('0771167330') || data.email === 'dalinadjib1990@gmail.com' || auth.currentUser?.email === 'dalinadjib1990@gmail.com';
         
         if (isAdminUser && data.role !== 'admin') {
           try {

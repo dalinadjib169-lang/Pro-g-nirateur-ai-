@@ -29,7 +29,7 @@ const ADHKAR_LIST = [
 ];
 
 export default function GeneratorPage() {
-  const { userData, signOut, refreshUserData } = useAuth();
+  const { user, userData, signOut, refreshUserData } = useAuth();
   const navigate = useNavigate();
   const { addFile, unreadCount } = useDownloads();
   const [isDownloadsModalOpen, setIsDownloadsModalOpen] = useState(false);
@@ -238,7 +238,7 @@ export default function GeneratorPage() {
     alert('تم حفظ معلومات الأستاذ والوثيقة بنجاح!');
   };
 
-  const isFreeMode = userData && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com' && !userData.isPro;
+  const isFreeMode = userData && userData.role !== 'admin' && userData.email !== 'dalinadjib1990@gmail.com' && user?.email !== 'dalinadjib1990@gmail.com' && !userData.isPro;
 
   let designStyles = [
     { id: 'style1', label: 'كلاسيكي', icon: BookOpen, color: '#1e40af', twColor: 'text-blue-600', twBg: 'bg-blue-100', twBorder: 'border-blue-200' },
@@ -842,7 +842,7 @@ export default function GeneratorPage() {
                 <button onClick={() => profileModalEmitter.dispatchEvent(new Event('open'))} className="p-1 md:p-1.5 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="تحديث الملف الشخصي">
                   <Settings size={14} />
                 </button>
-                {userData && (userData.role === 'admin' || userData.email === 'dalinadjib1990@gmail.com') && (
+                {(userData?.role === 'admin' || userData?.email === 'dalinadjib1990@gmail.com' || user?.email === 'dalinadjib1990@gmail.com') && (
                   <button onClick={() => navigate('/admin')} className="p-1 md:p-1.5 text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30 flex items-center justify-center w-7 h-7 md:w-8 md:h-8" title="لوحة التحكم">
                     <Shield size={14} />
                   </button>
